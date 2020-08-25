@@ -1,0 +1,49 @@
+image: ardikabs/terrascript:0.12.25
+
+stages:
+  - validate
+  - plan
+  - apply
+
+variables:
+  AWS_PROFILE: "set the AWS_PROFILE name here"
+  TF_BACKEND_BUCKET: "set the Terraform Backend S3 Bucket name here"
+  TF_BACKEND_DYNAMODB_TABLE: "set the Terraform Backend DynamoDB table name here"
+
+before_script:
+  - unset AWS_SECRET_ACCESS_KEY
+  - unset AWS_ACCESS_KEY_ID
+  - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf ssh://git@gitlab.com/
+  - mkdir -p ~/.aws
+  - echo -n "$AWS_CREDENTIALS" | base64 -d > ~/.aws/credentials
+  - echo -n "$AWS_CONFIG" | base64 -d > ~/.aws/config
+  - git fetch
+
+validate:on_commit:
+  stage: validate
+  script:
+    - export TF_PREVIOUS_HEAD=$(git rev-parse remotes/origin/master)
+    - terrascript validate
+  except:
+    refs:
+      - merge_requests
+      - master
+
+plan:on_merge_request:
+  stage: plan
+  script:
+    - export TF_PREVIOUS_HEAD=$(git rev-parse remotes/origin/master)
+    - terrascript plan
+  only:
+    refs:
+      - merge_requests
+
+apply:if_approved:
+  stage: apply
+  script:
+    - export TF_PREVIOUS_HEAD=$(git rev-parse remotes/origin/master)
+    - terrascript apply
+  only:
+    - merge_requests
+  when: manual
+  allow_failure: false

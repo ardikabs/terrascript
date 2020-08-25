@@ -1,0 +1,17 @@
+stages:
+- build
+
+variables:
+  IMAGE_NAME: ardikabs/terraform
+  IMAGE_VERSION: 0.12.25-release
+
+build:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "$DOCKERCONFIG" | base64 -d > /kaniko/.docker/config.json
+    - executor --context $CI_PROJECT_DIR --dockerfile Dockerfile.terraform --destination ${IMAGE_NAME}:${IMAGE_VERSION}
+  when: manual

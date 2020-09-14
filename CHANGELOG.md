@@ -1,5 +1,9 @@
-# v0.12.25 (Aug 25, 2020)
+# v0.1.1 (Sept 14, 2020)
 NOTES:
-* Initially terrascript to be aware with changes on files: `*.tf`, `*.tfvars`, `*.json`
+* Break the execute action to be an `execute` function
+
+# v0.1.0 (Aug 25, 2020)
+NOTES:
+* Initially put terrascript to be aware with changes on the following files: `*.tf`, `*.tfvars`, `*.json`
 * Add TF_ASSIGNERS variable to refer the allowed user for running terrascript
 * Tested for managing AWS resources with terraform

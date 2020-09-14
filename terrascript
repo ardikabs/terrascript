@@ -72,6 +72,54 @@ function assigner_check(){
 
 }
 
+function execute(){
+    local DIRS
+    DIRS=$1
+
+    for tfpath in $DIRS
+    do
+        dir_with_files=$(find $BASEDIR/$tfpath -maxdepth 1 -type f 2>/dev/null)
+        if [ ! -z "$dir_with_files" ]; then
+
+            echo -e "${BLUE}[START]${NC} ${WHITE}Starting Terraform task at${NC} ${LYELLOW}$tfpath\n${NC}"
+
+            bash -c "
+                export TF_BACKEND_STATE=${tfpath%\/}/terraform.tfstate
+                export TF_PLUGIN_CACHE_DIR=$CACHE_DIR
+
+                cd $BASEDIR/$tfpath
+                sleep 1
+
+                case $2 in
+                    validate)
+                    $TF_INIT -backend=false
+                    $TF_VALIDATE
+                    ;;
+                    plan)
+                    $TF_INIT $TF_BACKEND_CONFIG
+                    sleep 1
+                    $TF_VALIDATE
+                    sleep 1
+                    $TF_PLAN
+                    ;;
+                    apply)
+                    $TF_INIT $TF_BACKEND_CONFIG
+                    sleep 1
+                    $TF_VALIDATE
+                    sleep 1
+                    $TF_PLAN
+                    sleep 5
+                    $TF_APPLY
+                    ;;
+                esac
+            "
+
+            echo -e "${BLUE}[DONE]${NC} ${WHITE}Terraform task at ${LYELLOW}$tfpath\n${NC} is completed\n${NC}"
+
+        fi
+    done
+}
+
 function setup(){
     BASEDIR=$PWD
     REPOSITORY_NAME=$(basename `git rev-parse --show-toplevel`)
@@ -80,14 +128,14 @@ function setup(){
 
     CURRENT_HEAD=$(git rev-parse HEAD)
 
+    # Select backend and forming -backend-config arguments for terraform
+    select_backend "${TF_BACKEND:-aws}"
+
     # Perform scanning into repository for any changes in one of the following states
     # Added, Modified, Renamed, and Deleted
     TF_ADDED_DIRS=$(git --no-pager diff ${PREVIOUS_HEAD} ${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
     TF_MODIFIED_DIRS=$(git --no-pager diff ${PREVIOUS_HEAD} ${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=MR -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
     TF_DELETED_DIRS=$(git --no-pager diff ${PREVIOUS_HEAD} ${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-
-    # Select backend and forming -backend-config arguments for terraform
-    select_backend "${TF_BACKEND:-aws}"
 
     if [ ! -z "$TF_ADDED_DIRS" ]; then
 
@@ -97,42 +145,7 @@ function setup(){
         echo -e "${YELLOW}[ADDED]${NC} Terraform resources list:"
         echo -e "${WHITE}-------------------------------------\n${NC}"
 
-        for tfpath in $TF_ADDED_DIRS
-        do
-            dir_with_files=$(find $BASEDIR/$tfpath -maxdepth 1 -type f 2>/dev/null)
-            if [ ! -z "$dir_with_files" ]; then
-
-                echo -e "${BLUE}[START]${NC} ${WHITE}Starting Terraform task at${NC} ${LYELLOW}$tfpath\n${NC}"
-
-                bash -c "
-                    export TF_BACKEND_STATE=${tfpath%\/}/terraform.tfstate
-                    export TF_PLUGIN_CACHE_DIR=$CACHE_DIR
-
-                    cd $BASEDIR/$tfpath
-                    sleep 1
-
-                    $TF_INIT $TF_BACKEND_CONFIG
-                    sleep 1
-
-                    if [ $1 == "validate" ]; then
-                        $TF_VALIDATE
-                    elif [ $1 == "plan" ]; then
-                        $TF_VALIDATE
-                        sleep 1
-                        $TF_PLAN
-                    elif [ $1 == "apply" ]; then
-                        $TF_VALIDATE
-                        sleep 1
-                        $TF_PLAN
-                        sleep 5
-                        $TF_APPLY
-                    fi
-                "
-
-                echo -e "${BLUE}[DONE]${NC} ${WHITE}Terraform task at ${LYELLOW}$tfpath\n${NC} is completed\n${NC}"
-
-            fi
-        done
+        execute $TF_ADDED_DIRS $1
     fi
 
     if [ ! -z "$TF_MODIFIED_DIRS" ]; then
@@ -143,43 +156,7 @@ function setup(){
         echo -e "${GREEN}[MODIFIED]${NC} Terraform resources list:"
         echo -e "${WHITE}-------------------------------------\n${NC}"
 
-        for tfpath in $TF_MODIFIED_DIRS
-        do
-            dir_with_files=$(find $BASEDIR/$tfpath -maxdepth 1 -type f 2>/dev/null)
-            if [ ! -z "$dir_with_files" ]; then
-
-                echo -e "${BLUE}[START]${NC} ${WHITE}Starting Terraform task at${NC} ${LYELLOW}$tfpath\n${NC}"
-
-                bash -c "
-                    export TF_BACKEND_STATE=${tfpath%\/}/terraform.tfstate
-                    export TF_PLUGIN_CACHE_DIR=$CACHE_DIR
-
-                    cd $BASEDIR/$tfpath
-                    sleep 1
-
-                    $TF_INIT $TF_BACKEND_CONFIG
-                    sleep 1
-
-                    if [ $1 == "validate" ]; then
-                        $TF_VALIDATE
-                    elif [ $1 == "plan" ]; then
-                        $TF_VALIDATE
-                        sleep 1
-                        $TF_PLAN
-                    elif [ $1 == "apply" ]; then
-                        $TF_VALIDATE
-                        sleep 1
-                        $TF_PLAN
-                        sleep 5
-                        $TF_APPLY
-                    fi
-                "
-
-                echo -e "${BLUE}[DONE]${NC} ${WHITE}Terraform task at ${LYELLOW}$tfpath\n${NC} is completed\n${NC}"
-
-            fi
-        done
-
+        execute $TF_MODIFIED_DIRS $1
     fi
 
     if [ ! -z "$TF_DELETED_DIRS" ]; then
@@ -191,43 +168,7 @@ function setup(){
         echo -e "${WHITE}-------------------------------------\n${NC}"
 
         git checkout ${PREVIOUS_HEAD} > /dev/null 2>&1
-
-        for tfpath in $TF_DELETED_DIRS
-        do
-            dir_with_files=$(find $BASEDIR/$tfpath -maxdepth 1 -type f 2>/dev/null)
-            if [ ! -z "$dir_with_files" ]; then
-
-                echo -e "${BLUE}[START]${NC} ${WHITE}Starting Terraform task at${NC} ${LYELLOW}$tfpath\n${NC}"
-
-                bash -c "
-                    export TF_BACKEND_STATE=${tfpath%\/}/terraform.tfstate
-                    export TF_PLUGIN_CACHE_DIR=$CACHE_DIR
-
-                    cd $BASEDIR/$tfpath
-                    sleep 1
-
-                    $TF_INIT $TF_BACKEND_CONFIG
-                    sleep 1
-
-                    if [ $1 == "validate" ]; then
-                        $TF_VALIDATE
-                    elif [ $1 == "plan" ]; then
-                        $TF_VALIDATE
-                        sleep 1
-                        $TF_PLAN -destroy
-                    elif [ $1 == "apply" ]; then
-                        $TF_VALIDATE
-                        sleep 1
-                        $TF_PLAN -destroy
-                        sleep 5
-                        $TF_APPLY
-                    fi
-                "
-                echo -e "${BLUE}[DONE]${NC} ${WHITE}Terraform task at ${LYELLOW}$tfpath\n${NC} is completed\n${NC}"
-
-            fi
-        done
-
+        execute $TF_DELETED_DIRS $1
         git checkout $CURRENT_HEAD > /dev/null 2>&1
     fi
 

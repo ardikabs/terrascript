@@ -1,5 +1,7 @@
 FROM debian:stretch-slim
 
+ARG TERRAFORM_VERSION=0.12.26
+
 ENV DEBIAN_FRONTEND noninteractive
 
 WORKDIR /app

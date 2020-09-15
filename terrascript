@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -euo pipefail
+set -eo pipefail
 
 PREVIOUS_HEAD=${TF_PREVIOUS_HEAD:-`git rev-parse HEAD^1`}
 
@@ -73,10 +73,16 @@ function assigner_check(){
 }
 
 function execute(){
-    local DIRS
-    DIRS=$1
+    local _dirs
+    local _action
+    local _ifdestroy
 
-    for tfpath in $DIRS
+    _dirs=$1
+    _action=$2
+
+    if [ ! -z $3 ]; then _ifdestroy="-destroy"; fi
+
+    for tfpath in ${_dirs}
     do
         dir_with_files=$(find $BASEDIR/$tfpath -maxdepth 1 -type f 2>/dev/null)
         if [ ! -z "$dir_with_files" ]; then
@@ -90,7 +96,7 @@ function execute(){
                 cd $BASEDIR/$tfpath
                 sleep 1
 
-                case $2 in
+                case ${_action} in
                     validate)
                     $TF_INIT -backend=false
                     $TF_VALIDATE
@@ -100,16 +106,16 @@ function execute(){
                     sleep 1
                     $TF_VALIDATE
                     sleep 1
-                    $TF_PLAN
+                    $TF_PLAN ${_ifdestroy}
                     ;;
                     apply)
                     $TF_INIT $TF_BACKEND_CONFIG
                     sleep 1
                     $TF_VALIDATE
                     sleep 1
-                    $TF_PLAN
+                    $TF_PLAN ${_ifdestroy}
                     sleep 5
-                    $TF_APPLY
+                    $TF_APPLY ${_ifdestroy}
                     ;;
                 esac
             "
@@ -168,7 +174,7 @@ function setup(){
         echo -e "${WHITE}-------------------------------------\n${NC}"
 
         git checkout ${PREVIOUS_HEAD} > /dev/null 2>&1
-        execute $TF_DELETED_DIRS $1
+        execute $TF_DELETED_DIRS $1 destroy
         git checkout $CURRENT_HEAD > /dev/null 2>&1
     fi
 

@@ -1,4 +1,4 @@
-image: ardikabs/terrascript:0.12.25
+image: ardikabs/terrascript:v0.1.0
 
 stages:
   - validate

@@ -20,6 +20,20 @@ LYELLOW='\033[1;93m'
 WHITE='\033[1;97m'
 NC='\033[0m'
 
+function show_version(){
+cat <<EOF
+ _______                                _       _
+|__   __|                              (_)     | |
+   | | ___ _ __ _ __ __ _ ___  ___ _ __ _ _ __ | |_
+   | |/ _ \ '__| '__/ _\` / __|/ __| '__| | '_ \| __|
+   | |  __/ |  | | | (_| \__ \ (__| |  | | |_) | |_
+   |_|\___|_|  |_|  \__,_|___/\___|_|  |_| .__/ \__|
+                                         | |
+                                         |_|
+Version: v0.1.2
+EOF
+}
+
 function usage() {
 SELF="terrascript"
 
@@ -27,16 +41,17 @@ cat <<EOF
 Terrascript is a custom built script for maintaining your git repository to be able
 work with Terraform under git perfectly
 
-Terrascript perform to scan your git repository which MUST in the one of following condition:
+Terrascript perform to scan your git repository using "git-diff" triple-dot approach, thus MUST be in the one of following condition:
 * ADDED
 * MODIFIED
 * DELETED
 
 USAGE:
 
-  $SELF validate     : basically terraform validate with more power
-  $SELF plan         : basically terraform plan with more power
-  $SELF apply        : basically terraform apply with more power
+  $SELF validate     : do terraform validate with more power
+  $SELF plan         : do terraform plan with more power
+  $SELF apply        : do terraform apply with more power
+  $SELF version      : show terrascript version
 
   $SELF -h,--help    : show this message
 EOF
@@ -139,9 +154,9 @@ function setup(){
 
     # Perform scanning into repository for any changes in one of the following states
     # Added, Modified, Renamed, and Deleted
-    TF_ADDED_DIRS=$(git --no-pager diff ${PREVIOUS_HEAD} ${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-    TF_MODIFIED_DIRS=$(git --no-pager diff ${PREVIOUS_HEAD} ${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=MR -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-    TF_DELETED_DIRS=$(git --no-pager diff ${PREVIOUS_HEAD} ${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+    TF_ADDED_DIRS=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+    TF_MODIFIED_DIRS=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=MR -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+    TF_DELETED_DIRS=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
 
     if [ ! -z "$TF_ADDED_DIRS" ]; then
 
@@ -200,6 +215,9 @@ function main(){
             CONTINUE=0
         elif [[ "$CHOICE" == "--help" || "$CHOICE" == "-h" ]]; then
             usage
+            CONTINUE=0
+        elif [[ "$CHOICE" == "version" ]]; then
+            show_version
             CONTINUE=0
         elif [[ "$#" -gt 0 ]]; then
             echo -e "${WHITE}-------------------------------------${NC}"

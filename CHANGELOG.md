@@ -1,3 +1,8 @@
+# 0.1.2 (Sept 16, 2020)
+NOTES:
+* Terraform v0.12.25
+* Replace `git-diff` double-dot to triple-dot approach
+
 # v0.1.1 (Sept 14, 2020)
 NOTES:
 * Break the execute action to be an `execute` function

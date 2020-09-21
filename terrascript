@@ -130,7 +130,7 @@ function execute(){
                     sleep 1
                     $TF_PLAN ${_ifdestroy}
                     sleep 5
-                    $TF_APPLY ${_ifdestroy}
+                    $TF_APPLY
                     ;;
                 esac
             "

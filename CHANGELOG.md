@@ -1,3 +1,8 @@
+# 0.1.3 (Sept 21, 2020)
+NOTES:
+* Terraform v0.12.25
+* Fix error occur while `terraform apply` on destroy scene
+
 # 0.1.2 (Sept 16, 2020)
 NOTES:
 * Terraform v0.12.25

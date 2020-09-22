@@ -3,7 +3,7 @@ stages:
 
 variables:
   APP_NAME: ardikabs/terrascript
-  APP_VERSION: v0.1.1
+  APP_VERSION: ${CI_COMMIT_TAG}
   TERRAFORM_VERSION: 0.12.25
 
 build:

@@ -2,10 +2,8 @@
 set -eo pipefail
 
 NEWEST_TAG=$(git describe --tags --abbrev=0)
-TERRASCRIPT_VERSION=$(grep "^TERRASCRIPT_VERSION=" terrascript | awk -F= '{print $2}')
+TERRASCRIPT_VERSION=$(grep "^TERRASCRIPT_VERSION=" $(git rev-parse --show-toplevel)/terrascript | awk -F= '{print $2}')
 
 if [ x$NEWEST_TAG != x$TERRASCRIPT_VERSION ]; then
     git tag -a $TERRASCRIPT_VERSION -m "Terrascript version $TERRASCRIPT_VERSION"
 fi
-
-echo $TERRASCRIPT_VERSIONx

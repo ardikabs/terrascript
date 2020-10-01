@@ -207,10 +207,31 @@ function setup(){
         echo -e "${WHITE}-------------------------------------\n${NC}"
 
         git checkout ${PREVIOUS_HEAD} > /dev/null 2>&1
-        execute ${deleted_dirs} ${action} destroy
+        execute "${deleted_dirs}" ${action} destroy
         git checkout ${CURRENT_HEAD} > /dev/null 2>&1
     fi
 
+    echo -e "${RED}"
+    echo -e "############################################################"
+    echo -e "                 END OF TERRAFORM TASK                      "
+    echo -e "############################################################"
+    echo -e "${NC}"
+
+    echo -e "${GREEN}SUMMARY REPORT${NC}"
+    printf "\n${YELLOW}Added${NC} Resources: %s\n" $([[ -z $added_dirs ]] && echo echo -e "${LGREEN}NONE${NC}")
+    for path in $added_dirs; do
+        echo -e "${YELLOW}\t$path${NC}"
+    done
+
+    printf "\n${GREEN}Modified${NC} Resources: %s\n" $([[ -z $modified_dirs ]] && echo -e "${LGREEN}NONE${NC}")
+    for path in $modified_dirs; do
+        echo -e "${GREEN}\t$path${NC}"
+    done
+
+    printf "\n${RED}Deleted${NC} Resources: %s\n" $([[ -z $deleted_dirs ]] && echo -e "${LGREEN}NONE${NC}")
+    for path in $deleted_dirs; do
+        echo -e "${RED}\t$path${NC}"
+    done
 }
 
 function main(){

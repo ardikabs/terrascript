@@ -1,8 +1,7 @@
 #!/bin/bash
+TERRASCRIPT_VERSION=v0.1.3
 
 set -eo pipefail
-
-TERRASCRIPT_VERSION=v0.1.3
 
 RED='\033[1;31m'
 YELLOW='\033[1;33m'
@@ -12,10 +11,6 @@ LGREEN='\033[1;92m'
 LYELLOW='\033[1;93m'
 WHITE='\033[1;97m'
 NC='\033[0m'
-
-# Git commit variables
-CURRENT_HEAD=$(git rev-parse HEAD)
-PREVIOUS_HEAD=${TF_PREVIOUS_HEAD:-`git rev-parse HEAD^1`}
 
 # Terraform variables
 TF_BACKEND=${TF_BACKEND:-aws}
@@ -169,6 +164,10 @@ function setup(){
     action=$1
     repo=$(basename `git rev-parse --show-toplevel`)
 
+    # Git commit variables
+    CURRENT_HEAD=$(git rev-parse HEAD)
+    PREVIOUS_HEAD=${TF_PREVIOUS_HEAD:-`git rev-parse HEAD^1`}
+
     # Select backend and forming -backend-config arguments for terraform
     select_backend "${TF_BACKEND}"
 
@@ -177,7 +176,7 @@ function setup(){
     # > Modified/Renamed
     # > Deleted
 
-    added_dirs=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+    added_dirs=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
     if [ ! -z "${added_dirs}" ]; then
         echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
 
@@ -185,10 +184,10 @@ function setup(){
         echo -e "${YELLOW}[ADDED]${NC} Terraform resources list:"
         echo -e "${WHITE}-------------------------------------\n${NC}"
 
-        execute ${added_dirs} ${action}
+        execute "${added_dirs[@]}" ${action}
     fi
 
-    modified_dirs=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=MR -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+    modified_dirs=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat-by-file --diff-filter=MR -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
     if [ ! -z "${modified_dirs}" ]; then
         echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
 
@@ -196,10 +195,10 @@ function setup(){
         echo -e "${GREEN}[MODIFIED]${NC} Terraform resources list:"
         echo -e "${WHITE}-------------------------------------\n${NC}"
 
-        execute ${modified_dirs} ${action}
+        execute "${modified_dirs[@]}" ${action}
     fi
 
-    deleted_dirs=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat=files,0,cumulative --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+    deleted_dirs=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat-by-file --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
     if [ ! -z "${deleted_dirs}" ]; then
         echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
 

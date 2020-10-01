@@ -1,5 +1,5 @@
 #!/bin/bash
-TERRASCRIPT_VERSION=v0.1.3
+TERRASCRIPT_VERSION=v0.1.4
 
 set -eo pipefail
 
@@ -218,7 +218,7 @@ function setup(){
     echo -e "${NC}"
 
     echo -e "${GREEN}SUMMARY REPORT${NC}"
-    printf "\n${YELLOW}Added${NC} Resources: %s\n" $([[ -z $added_dirs ]] && echo echo -e "${LGREEN}NONE${NC}")
+    printf "\n${YELLOW}Added${NC} Resources: %s\n" $([[ -z $added_dirs ]] && echo -e "${LGREEN}NONE${NC}")
     for path in $added_dirs; do
         echo -e "${YELLOW}\t$path${NC}"
     done

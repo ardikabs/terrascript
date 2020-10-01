@@ -1,3 +1,9 @@
+# 0.1.4 (Oct 6, 2020)
+NOTES:
+* Terraform v0.12.25
+* Fix multiple directories scene
+* Add summary report
+
 # 0.1.3 (Sept 21, 2020)
 NOTES:
 * Terraform v0.12.25

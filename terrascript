@@ -72,12 +72,12 @@ EOF
 
 function select_backend(){
 
-    if [ $1 == "aws" ]
+    if [ "$1" == "aws" ]
     then
         export TF_BACKEND_CONFIG="-backend-config=\"bucket=\$TF_BACKEND_BUCKET\""
         export TF_BACKEND_CONFIG+=" -backend-config=\"dynamodb_table=\$TF_BACKEND_DYNAMODB_TABLE\""
         export TF_BACKEND_CONFIG+=" -backend-config=\"key=\$TF_BACKEND_STATE\""
-    elif [ $1 == "gcs" ]
+    elif [ "$1" == "gcs" ]
     then
         export TF_BACKEND_CONFIG="-backend-config=\"bucket=\$TF_BACKEND_BUCKET\""
         export TF_BACKEND_CONFIG+=" -backend-config=\"prefix=\$TF_BACKEND_STATE\""
@@ -85,9 +85,9 @@ function select_backend(){
 }
 
 function assigner_check(){
-    assigner=$(echo $TF_ASSIGNERS | base64 -d)
+    assigner=$(echo "$TF_ASSIGNERS" | base64 -d)
 
-    if [ ! $(grep $GITLAB_USER_LOGIN <<< $assigner) ]; then
+    if ! grep "$GITLAB_USER_LOGIN" <<< "${assigner}" ; then
         echo -e "${WHITE}-------------------------------------${NC}"
         echo -e "${RED}ERROR:${NC} WHOOPS! You are not allowed to run this operation${NC}"
         echo -e "${WHITE}-------------------------------------${NC}"
@@ -101,19 +101,22 @@ function assigner_check(){
 }
 
 function execute(){
-    local basedir=$PWD
-    local cachedir=$(cachedir=${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}; mkdir -p ${cachedir}; echo ${cachedir})
+    local basedir
+    local cachedir
+
+    basedir=$PWD
+    cachedir=$(cachedir=${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}; mkdir -p "${cachedir}"; echo "${cachedir}")
 
     local _dirs=$1
     local _action=$2
     local _ifdestroy
 
-    if [ ! -z $3 ]; then _ifdestroy="-destroy"; fi
+    if [ -n "$3" ]; then _ifdestroy="-destroy"; fi
 
     for tfpath in ${_dirs}
     do
-        dir_with_files=$(find $basedir/$tfpath -maxdepth 1 -type f 2>/dev/null)
-        if [ ! -z "$dir_with_files" ]; then
+        dir_with_files=$(find "$basedir/$tfpath" -maxdepth 1 -type f 2>/dev/null)
+        if [ -n "$dir_with_files" ]; then
 
             echo -e "${BLUE}[START]${NC} ${WHITE}Starting Terraform task at${NC} ${LYELLOW}$tfpath\n${NC}"
 
@@ -162,11 +165,11 @@ function setup(){
     local deleted_dirs
 
     action=$1
-    repo=$(basename `git rev-parse --show-toplevel`)
+    repo=$(basename "$(git rev-parse --show-toplevel)")
 
     # Git commit variables
     CURRENT_HEAD=$(git rev-parse HEAD)
-    PREVIOUS_HEAD=${TF_PREVIOUS_HEAD:-`git rev-parse HEAD^1`}
+    PREVIOUS_HEAD=${TF_PREVIOUS_HEAD:-$(git rev-parse HEAD^1)}
 
     # Select backend and forming -backend-config arguments for terraform
     select_backend "${TF_BACKEND}"
@@ -176,39 +179,39 @@ function setup(){
     # > Modified/Renamed
     # > Deleted
 
-    added_dirs=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-    if [ ! -z "${added_dirs}" ]; then
+    added_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+    if [ -n "${added_dirs}" ]; then
         echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
 
         echo -e "${WHITE}-------------------------------------${NC}"
         echo -e "${YELLOW}[ADDED]${NC} Terraform resources list:"
         echo -e "${WHITE}-------------------------------------\n${NC}"
 
-        execute "${added_dirs[@]}" ${action}
+        execute "${added_dirs[@]}" "${action}"
     fi
 
-    modified_dirs=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat-by-file --diff-filter=MR -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-    if [ ! -z "${modified_dirs}" ]; then
+    modified_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=MR -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+    if [ -n "${modified_dirs}" ]; then
         echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
 
         echo -e "${WHITE}-------------------------------------${NC}"
         echo -e "${GREEN}[MODIFIED]${NC} Terraform resources list:"
         echo -e "${WHITE}-------------------------------------\n${NC}"
 
-        execute "${modified_dirs[@]}" ${action}
+        execute "${modified_dirs[@]}" "${action}"
     fi
 
-    deleted_dirs=$(git --no-pager diff ${PREVIOUS_HEAD}...${CURRENT_HEAD} --dirstat-by-file --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-    if [ ! -z "${deleted_dirs}" ]; then
+    deleted_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+    if [ -n "${deleted_dirs}" ]; then
         echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
 
         echo -e "${WHITE}-------------------------------------${NC}"
         echo -e "${RED}[DELETED]${NC} Terraform resources list:"
         echo -e "${WHITE}-------------------------------------\n${NC}"
 
-        git checkout ${PREVIOUS_HEAD} > /dev/null 2>&1
-        execute "${deleted_dirs}" ${action} destroy
-        git checkout ${CURRENT_HEAD} > /dev/null 2>&1
+        git checkout "${PREVIOUS_HEAD}" > /dev/null 2>&1
+        execute "${deleted_dirs}" "${action}" destroy
+        git checkout "${CURRENT_HEAD}" > /dev/null 2>&1
     fi
 
     echo -e "${RED}"
@@ -218,17 +221,17 @@ function setup(){
     echo -e "${NC}"
 
     echo -e "${GREEN}SUMMARY REPORT${NC}"
-    printf "\n${YELLOW}Added${NC} Resources: %s\n" $([[ -z $added_dirs ]] && echo -e "${LGREEN}NONE${NC}")
+    printf "\n${YELLOW}Added${NC} Resources: %s\n" "$([[ -z $added_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
     for path in $added_dirs; do
         echo -e "${YELLOW}\t$path${NC}"
     done
 
-    printf "\n${GREEN}Modified${NC} Resources: %s\n" $([[ -z $modified_dirs ]] && echo -e "${LGREEN}NONE${NC}")
+    printf "\n${GREEN}Modified${NC} Resources: %s\n" "$([[ -z $modified_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
     for path in $modified_dirs; do
         echo -e "${GREEN}\t$path${NC}"
     done
 
-    printf "\n${RED}Deleted${NC} Resources: %s\n" $([[ -z $deleted_dirs ]] && echo -e "${LGREEN}NONE${NC}")
+    printf "\n${RED}Deleted${NC} Resources: %s\n" "$([[ -z $deleted_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
     for path in $deleted_dirs; do
         echo -e "${RED}\t$path${NC}"
     done
@@ -241,7 +244,7 @@ function main(){
         echo -e "${WHITE}-------------------------------------${NC}"
         echo -e "${RED}ERROR:${NC} missing terraform command"
         echo -e "${WHITE}-------------------------------------${NC}"
-    elif [[ "$(type git 2>&1 >/dev/null; echo $?)" -eq 1 ]]; then
+    elif [[ "$(type git >/dev/null 2>&1; echo $?)" -eq 1 ]]; then
         echo -e "${WHITE}-------------------------------------${NC}"
         echo -e "${RED}ERROR:${NC} missing git command"
         echo -e "${WHITE}-------------------------------------${NC}"
@@ -274,7 +277,7 @@ function main(){
                 *)
                     echo -e "${WHITE}-------------------------------------${NC}"
                     echo -e "${RED}ERROR:{NC} WHOOPS! Terascript argument ${RED}'$CHOICE'${NC}"
-                    echo -e "${RED}is not available yet!"${NC}
+                    echo -e "${RED}is not available yet!${NC}"
                     echo -e "${WHITE}-------------------------------------${NC}"
                     printf "\n\n"
                     usage
@@ -287,4 +290,4 @@ function main(){
     exit $CONTINUE
 }
 
-main $@
+main "$@"

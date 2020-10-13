@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 
-if [[ "$(type shellcheck 2>&1 >/dev/null; echo $?)" -eq 1 ]]; then
+if [[ "$(type shellcheck >/dev/null 2>&1; echo $?)" -eq 1 ]]; then
     echo -e "\033[1;31mError\033[0m: missing shellcheck command"
     exit 1
 fi

@@ -21,12 +21,12 @@ TF_VALIDATE="$TF_BIN validate"
 TF_PLAN="$TF_BIN plan -out $TF_PLANFILE"
 TF_APPLY="$TF_BIN apply $TF_PLANFILE"
 
-function show_version(){
+function show_version() {
     printf "Terraform Version: %s\n" "${TERRASCRIPT_VERSION}"
 }
 
-function show_figlet(){
-cat <<EOF
+function show_figlet() {
+    cat <<EOF
  _______                                _       _
 |__   __|                              (_)     | |
    | | ___ _ __ _ __ __ _ ___  ___ _ __ _ _ __ | |_
@@ -39,7 +39,7 @@ EOF
 }
 
 function usage() {
-cat <<EOF
+    cat <<EOF
 $(show_figlet)
 
 Terrascript is a thin wrapper of Terraform that have ability to be aware with changes on a git local-repository
@@ -70,24 +70,22 @@ ENVIRONMENT VARIABLES:
 EOF
 }
 
-function select_backend(){
+function select_backend() {
 
-    if [ "$1" == "aws" ]
-    then
+    if [ "$1" == "aws" ]; then
         export TF_BACKEND_CONFIG="-backend-config=\"bucket=\$TF_BACKEND_BUCKET\""
         export TF_BACKEND_CONFIG+=" -backend-config=\"dynamodb_table=\$TF_BACKEND_DYNAMODB_TABLE\""
         export TF_BACKEND_CONFIG+=" -backend-config=\"key=\$TF_BACKEND_STATE\""
-    elif [ "$1" == "gcs" ]
-    then
+    elif [ "$1" == "gcs" ]; then
         export TF_BACKEND_CONFIG="-backend-config=\"bucket=\$TF_BACKEND_BUCKET\""
         export TF_BACKEND_CONFIG+=" -backend-config=\"prefix=\$TF_BACKEND_STATE\""
     fi
 }
 
-function assigner_check(){
+function assigner_check() {
     assigner=$(echo "$TF_ASSIGNERS" | base64 -d)
 
-    if ! grep "$GITLAB_USER_LOGIN" <<< "${assigner}" ; then
+    if ! grep "$GITLAB_USER_LOGIN" <<<"${assigner}"; then
         echo -e "${WHITE}-------------------------------------${NC}"
         echo -e "${RED}ERROR:${NC} WHOOPS! You are not allowed to run this operation${NC}"
         echo -e "${WHITE}-------------------------------------${NC}"
@@ -100,12 +98,16 @@ function assigner_check(){
 
 }
 
-function execute(){
+function execute() {
     local basedir
     local cachedir
 
     basedir=$PWD
-    cachedir=$(cachedir=${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}; mkdir -p "${cachedir}"; echo "${cachedir}")
+    cachedir=$(
+        cachedir=${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}
+        mkdir -p "${cachedir}"
+        echo "${cachedir}"
+    )
 
     local _dirs=$1
     local _action=$2
@@ -113,8 +115,7 @@ function execute(){
 
     if [ -n "$3" ]; then _ifdestroy="-destroy"; fi
 
-    for tfpath in ${_dirs}
-    do
+    for tfpath in ${_dirs}; do
         dir_with_files=$(find "$basedir/$tfpath" -maxdepth 1 -type f 2>/dev/null)
         if [ -n "$dir_with_files" ]; then
 
@@ -157,7 +158,7 @@ function execute(){
     done
 }
 
-function setup(){
+function setup() {
     local repo
     local action
     local added_dirs
@@ -209,9 +210,9 @@ function setup(){
         echo -e "${RED}[DELETED]${NC} Terraform resources list:"
         echo -e "${WHITE}-------------------------------------\n${NC}"
 
-        git checkout "${PREVIOUS_HEAD}" > /dev/null 2>&1
+        git checkout "${PREVIOUS_HEAD}" >/dev/null 2>&1
         execute "${deleted_dirs}" "${action}" destroy
-        git checkout "${CURRENT_HEAD}" > /dev/null 2>&1
+        git checkout "${CURRENT_HEAD}" >/dev/null 2>&1
     fi
 
     echo -e "${RED}"
@@ -237,14 +238,17 @@ function setup(){
     done
 }
 
-function main(){
+function main() {
     local CONTINUE=1
 
     if [[ ! -x $TF_BIN ]]; then
         echo -e "${WHITE}-------------------------------------${NC}"
         echo -e "${RED}ERROR:${NC} missing terraform command"
         echo -e "${WHITE}-------------------------------------${NC}"
-    elif [[ "$(type git >/dev/null 2>&1; echo $?)" -eq 1 ]]; then
+    elif [[ "$(
+        type git >/dev/null 2>&1
+        echo $?
+    )" -eq 1 ]]; then
         echo -e "${WHITE}-------------------------------------${NC}"
         echo -e "${RED}ERROR:${NC} missing git command"
         echo -e "${WHITE}-------------------------------------${NC}"
@@ -253,35 +257,35 @@ function main(){
     else
         for arg in "$@"; do
             case $arg in
-                validate)
-                    setup "validate"
-                    CONTINUE=0
+            validate)
+                setup "validate"
+                CONTINUE=0
                 ;;
-                plan)
-                    setup "plan"
-                    CONTINUE=0
+            plan)
+                setup "plan"
+                CONTINUE=0
                 ;;
-                apply)
-                    assigner_check
-                    setup "apply"
-                    CONTINUE=0
+            apply)
+                assigner_check
+                setup "apply"
+                CONTINUE=0
                 ;;
-                --help|-h)
-                    usage
-                    CONTINUE=0
+            --help | -h)
+                usage
+                CONTINUE=0
                 ;;
-                version)
-                    show_version
-                    CONTINUE=0
+            version)
+                show_version
+                CONTINUE=0
                 ;;
-                *)
-                    echo -e "${WHITE}-------------------------------------${NC}"
-                    echo -e "${RED}ERROR:{NC} WHOOPS! Terascript argument ${RED}'$CHOICE'${NC}"
-                    echo -e "${RED}is not available yet!${NC}"
-                    echo -e "${WHITE}-------------------------------------${NC}"
-                    printf "\n\n"
-                    usage
-                    break
+            *)
+                echo -e "${WHITE}-------------------------------------${NC}"
+                echo -e "${RED}ERROR:{NC} WHOOPS! Terascript argument ${RED}'$CHOICE'${NC}"
+                echo -e "${RED}is not available yet!${NC}"
+                echo -e "${WHITE}-------------------------------------${NC}"
+                printf "\n\n"
+                usage
+                break
                 ;;
             esac
         done

@@ -245,10 +245,7 @@ function main() {
         echo -e "${WHITE}-------------------------------------${NC}"
         echo -e "${RED}ERROR:${NC} missing terraform command"
         echo -e "${WHITE}-------------------------------------${NC}"
-    elif [[ "$(
-        type git >/dev/null 2>&1
-        echo $?
-    )" -eq 1 ]]; then
+    elif ! type git >/dev/null 2>&1; then
         echo -e "${WHITE}-------------------------------------${NC}"
         echo -e "${RED}ERROR:${NC} missing git command"
         echo -e "${WHITE}-------------------------------------${NC}"

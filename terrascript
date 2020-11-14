@@ -22,24 +22,24 @@ TF_PLAN="$TF_BIN plan -out $TF_PLANFILE"
 TF_APPLY="$TF_BIN apply $TF_PLANFILE"
 
 function show_version() {
-    printf "Terraform Version: %s\n" "${TERRASCRIPT_VERSION}"
+  printf "Terraform Version: %s\n" "${TERRASCRIPT_VERSION}"
 }
 
 function show_figlet() {
-    cat <<EOF
+  cat <<EOF
  _______                                _       _
 |__   __|                              (_)     | |
    | | ___ _ __ _ __ __ _ ___  ___ _ __ _ _ __ | |_
    | |/ _ \ '__| '__/ _\` / __|/ __| '__| | '_ \| __|
    | |  __/ |  | | | (_| \__ \ (__| |  | | |_) | |_
    |_|\___|_|  |_|  \__,_|___/\___|_|  |_| .__/ \__|
-                                         | |
-                                         |_|
+                     | |
+                     |_|
 EOF
 }
 
 function usage() {
-    cat <<EOF
+  cat <<EOF
 $(show_figlet)
 
 Terrascript is a thin wrapper of Terraform that have ability to be aware with changes on a git local-repository
@@ -72,223 +72,223 @@ EOF
 
 function select_backend() {
 
-    if [ "$1" == "aws" ]; then
-        export TF_BACKEND_CONFIG="-backend-config=\"bucket=\$TF_BACKEND_BUCKET\""
-        export TF_BACKEND_CONFIG+=" -backend-config=\"dynamodb_table=\$TF_BACKEND_DYNAMODB_TABLE\""
-        export TF_BACKEND_CONFIG+=" -backend-config=\"key=\$TF_BACKEND_STATE\""
-    elif [ "$1" == "gcs" ]; then
-        export TF_BACKEND_CONFIG="-backend-config=\"bucket=\$TF_BACKEND_BUCKET\""
-        export TF_BACKEND_CONFIG+=" -backend-config=\"prefix=\$TF_BACKEND_STATE\""
-    fi
+  if [ "$1" == "aws" ]; then
+    export TF_BACKEND_CONFIG="-backend-config=\"bucket=\$TF_BACKEND_BUCKET\""
+    export TF_BACKEND_CONFIG+=" -backend-config=\"dynamodb_table=\$TF_BACKEND_DYNAMODB_TABLE\""
+    export TF_BACKEND_CONFIG+=" -backend-config=\"key=\$TF_BACKEND_STATE\""
+  elif [ "$1" == "gcs" ]; then
+    export TF_BACKEND_CONFIG="-backend-config=\"bucket=\$TF_BACKEND_BUCKET\""
+    export TF_BACKEND_CONFIG+=" -backend-config=\"prefix=\$TF_BACKEND_STATE\""
+  fi
 }
 
 function assigner_check() {
-    assigner=$(echo "$TF_ASSIGNERS" | base64 -d)
+  assigner=$(echo "$TF_ASSIGNERS" | base64 -d)
 
-    if ! grep "$GITLAB_USER_LOGIN" <<<"${assigner}"; then
-        echo -e "${WHITE}-------------------------------------${NC}"
-        echo -e "${RED}ERROR:${NC} WHOOPS! You are not allowed to run this operation${NC}"
-        echo -e "${WHITE}-------------------------------------${NC}"
-        printf "\n\n"
-        echo -e "${WHITE}Please contact one of the repository maintainers below:${NC}"
-        echo -e "${WHITE}$assigner${NC}"
-        printf "\n\n"
-        exit 1
-    fi
+  if ! grep "$GITLAB_USER_LOGIN" <<<"${assigner}"; then
+    echo -e "${WHITE}-------------------------------------${NC}"
+    echo -e "${RED}ERROR:${NC} WHOOPS! You are not allowed to run this operation${NC}"
+    echo -e "${WHITE}-------------------------------------${NC}"
+    printf "\n\n"
+    echo -e "${WHITE}Please contact one of the repository maintainers below:${NC}"
+    echo -e "${WHITE}$assigner${NC}"
+    printf "\n\n"
+    exit 1
+  fi
 
 }
 
 function execute() {
-    local basedir
-    local cachedir
+  local basedir
+  local cachedir
 
-    basedir=$PWD
-    cachedir=$(
-        cachedir=${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}
-        mkdir -p "${cachedir}"
-        echo "${cachedir}"
-    )
+  basedir=$PWD
+  cachedir=$(
+    cachedir=${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}
+    mkdir -p "${cachedir}"
+    echo "${cachedir}"
+  )
 
-    local _dirs=$1
-    local _action=$2
-    local _ifdestroy
+  local _dirs=$1
+  local _action=$2
+  local _ifdestroy
 
-    if [ -n "$3" ]; then _ifdestroy="-destroy"; fi
+  if [ -n "$3" ]; then _ifdestroy="-destroy"; fi
 
-    for tfpath in ${_dirs}; do
-        dir_with_files=$(find "$basedir/$tfpath" -maxdepth 1 -type f 2>/dev/null)
-        if [ -n "$dir_with_files" ]; then
+  for tfpath in ${_dirs}; do
+    dir_with_files=$(find "$basedir/$tfpath" -maxdepth 1 -type f 2>/dev/null)
+    if [ -n "$dir_with_files" ]; then
 
-            echo -e "${BLUE}[START]${NC} ${WHITE}Starting Terraform task at${NC} ${LYELLOW}$tfpath\n${NC}"
+      echo -e "${BLUE}[START]${NC} ${WHITE}Starting Terraform task at${NC} ${LYELLOW}$tfpath\n${NC}"
 
-            bash -c "
-                export TF_BACKEND_STATE=${tfpath%\/}/terraform.tfstate
-                export TF_PLUGIN_CACHE_DIR=${cachedir}
+      bash -c "
+        export TF_BACKEND_STATE=${tfpath%\/}/terraform.tfstate
+        export TF_PLUGIN_CACHE_DIR=${cachedir}
 
-                cd $basedir/$tfpath
-                sleep 1
+        cd $basedir/$tfpath
+        sleep 1
 
-                case ${_action} in
-                    validate)
-                    $TF_INIT -backend=false
-                    $TF_VALIDATE
-                    ;;
-                    plan)
-                    $TF_INIT $TF_BACKEND_CONFIG
-                    sleep 1
-                    $TF_VALIDATE
-                    sleep 1
-                    $TF_PLAN ${_ifdestroy}
-                    ;;
-                    apply)
-                    $TF_INIT $TF_BACKEND_CONFIG
-                    sleep 1
-                    $TF_VALIDATE
-                    sleep 1
-                    $TF_PLAN ${_ifdestroy}
-                    sleep 5
-                    $TF_APPLY
-                    ;;
-                esac
-            "
+        case ${_action} in
+          validate)
+          $TF_INIT -backend=false
+          $TF_VALIDATE
+          ;;
+          plan)
+          $TF_INIT $TF_BACKEND_CONFIG
+          sleep 1
+          $TF_VALIDATE
+          sleep 1
+          $TF_PLAN ${_ifdestroy}
+          ;;
+          apply)
+          $TF_INIT $TF_BACKEND_CONFIG
+          sleep 1
+          $TF_VALIDATE
+          sleep 1
+          $TF_PLAN ${_ifdestroy}
+          sleep 5
+          $TF_APPLY
+          ;;
+        esac
+      "
 
-            echo -e "${BLUE}[DONE]${NC} ${WHITE}Terraform task at ${LYELLOW}$tfpath\n${NC} is completed\n${NC}"
+      echo -e "${BLUE}[DONE]${NC} ${WHITE}Terraform task at ${LYELLOW}$tfpath\n${NC} is completed\n${NC}"
 
-        fi
-    done
+    fi
+  done
 }
 
 function setup() {
-    local repo
-    local action
-    local added_dirs
-    local modified_dirs
-    local deleted_dirs
+  local repo
+  local action
+  local added_dirs
+  local modified_dirs
+  local deleted_dirs
 
-    action=$1
-    repo=$(basename "$(git rev-parse --show-toplevel)")
+  action=$1
+  repo=$(basename "$(git rev-parse --show-toplevel)")
 
-    # Git commit variables
-    CURRENT_HEAD=$(git rev-parse HEAD)
-    PREVIOUS_HEAD=${TF_PREVIOUS_HEAD:-$(git rev-parse HEAD^1)}
+  # Git commit variables
+  CURRENT_HEAD=$(git rev-parse HEAD)
+  PREVIOUS_HEAD=${TF_PREVIOUS_HEAD:-$(git rev-parse HEAD^1)}
 
-    # Select backend and forming -backend-config arguments for terraform
-    select_backend "${TF_BACKEND}"
+  # Select backend and forming -backend-config arguments for terraform
+  select_backend "${TF_BACKEND}"
 
-    # Perform scanning into repository for any changes in one of the following states
-    # > Adding
-    # > Modified/Renamed
-    # > Deleted
+  # Perform scanning into repository for any changes in one of the following states
+  # > Adding
+  # > Modified/Renamed
+  # > Deleted
 
-    added_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-    if [ -n "${added_dirs}" ]; then
-        echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
+  added_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+  if [ -n "${added_dirs}" ]; then
+    echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
 
-        echo -e "${WHITE}-------------------------------------${NC}"
-        echo -e "${YELLOW}[ADDED]${NC} Terraform resources list:"
-        echo -e "${WHITE}-------------------------------------\n${NC}"
+    echo -e "${WHITE}-------------------------------------${NC}"
+    echo -e "${YELLOW}[ADDED]${NC} Terraform resources list:"
+    echo -e "${WHITE}-------------------------------------\n${NC}"
 
-        execute "${added_dirs[@]}" "${action}"
-    fi
+    execute "${added_dirs[@]}" "${action}"
+  fi
 
-    modified_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=MR -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-    if [ -n "${modified_dirs}" ]; then
-        echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
+  modified_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=MR -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+  if [ -n "${modified_dirs}" ]; then
+    echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
 
-        echo -e "${WHITE}-------------------------------------${NC}"
-        echo -e "${GREEN}[MODIFIED]${NC} Terraform resources list:"
-        echo -e "${WHITE}-------------------------------------\n${NC}"
+    echo -e "${WHITE}-------------------------------------${NC}"
+    echo -e "${GREEN}[MODIFIED]${NC} Terraform resources list:"
+    echo -e "${WHITE}-------------------------------------\n${NC}"
 
-        execute "${modified_dirs[@]}" "${action}"
-    fi
+    execute "${modified_dirs[@]}" "${action}"
+  fi
 
-    deleted_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-    if [ -n "${deleted_dirs}" ]; then
-        echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
+  deleted_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+  if [ -n "${deleted_dirs}" ]; then
+    echo -e "${BLUE}Terraform resources on ${repo}\n${NC}"
 
-        echo -e "${WHITE}-------------------------------------${NC}"
-        echo -e "${RED}[DELETED]${NC} Terraform resources list:"
-        echo -e "${WHITE}-------------------------------------\n${NC}"
+    echo -e "${WHITE}-------------------------------------${NC}"
+    echo -e "${RED}[DELETED]${NC} Terraform resources list:"
+    echo -e "${WHITE}-------------------------------------\n${NC}"
 
-        git checkout "${PREVIOUS_HEAD}" >/dev/null 2>&1
-        execute "${deleted_dirs}" "${action}" destroy
-        git checkout "${CURRENT_HEAD}" >/dev/null 2>&1
-    fi
+    git checkout "${PREVIOUS_HEAD}" >/dev/null 2>&1
+    execute "${deleted_dirs}" "${action}" destroy
+    git checkout "${CURRENT_HEAD}" >/dev/null 2>&1
+  fi
 
-    echo -e "${RED}"
-    echo -e "############################################################"
-    echo -e "                 END OF TERRAFORM TASK                      "
-    echo -e "############################################################"
-    echo -e "${NC}"
+  echo -e "${RED}"
+  echo -e "############################################################"
+  echo -e "                 END OF TERRAFORM TASK                      "
+  echo -e "############################################################"
+  echo -e "${NC}"
 
-    echo -e "${GREEN}SUMMARY REPORT${NC}"
-    printf "\n${YELLOW}Added${NC} Resources: %s\n" "$([[ -z $added_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
-    for path in $added_dirs; do
-        echo -e "${YELLOW}\t$path${NC}"
-    done
+  echo -e "${GREEN}SUMMARY REPORT${NC}"
+  printf "\n${YELLOW}Added${NC} Resources: %s\n" "$([[ -z $added_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
+  for path in $added_dirs; do
+    echo -e "${YELLOW}\t$path${NC}"
+  done
 
-    printf "\n${GREEN}Modified${NC} Resources: %s\n" "$([[ -z $modified_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
-    for path in $modified_dirs; do
-        echo -e "${GREEN}\t$path${NC}"
-    done
+  printf "\n${GREEN}Modified${NC} Resources: %s\n" "$([[ -z $modified_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
+  for path in $modified_dirs; do
+    echo -e "${GREEN}\t$path${NC}"
+  done
 
-    printf "\n${RED}Deleted${NC} Resources: %s\n" "$([[ -z $deleted_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
-    for path in $deleted_dirs; do
-        echo -e "${RED}\t$path${NC}"
-    done
+  printf "\n${RED}Deleted${NC} Resources: %s\n" "$([[ -z $deleted_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
+  for path in $deleted_dirs; do
+    echo -e "${RED}\t$path${NC}"
+  done
 }
 
 function main() {
-    local CONTINUE=1
+  local CONTINUE=1
 
-    if [[ ! -x $TF_BIN ]]; then
-        echo -e "${WHITE}-------------------------------------${NC}"
-        echo -e "${RED}ERROR:${NC} missing terraform command"
-        echo -e "${WHITE}-------------------------------------${NC}"
-    elif ! type git >/dev/null 2>&1; then
-        echo -e "${WHITE}-------------------------------------${NC}"
-        echo -e "${RED}ERROR:${NC} missing git command"
-        echo -e "${WHITE}-------------------------------------${NC}"
-    elif [[ $# -eq 0 ]]; then
+  if [[ ! -x $TF_BIN ]]; then
+    echo -e "${WHITE}-------------------------------------${NC}"
+    echo -e "${RED}ERROR:${NC} missing terraform command"
+    echo -e "${WHITE}-------------------------------------${NC}"
+  elif ! type git >/dev/null 2>&1; then
+    echo -e "${WHITE}-------------------------------------${NC}"
+    echo -e "${RED}ERROR:${NC} missing git command"
+    echo -e "${WHITE}-------------------------------------${NC}"
+  elif [[ $# -eq 0 ]]; then
+    usage
+  else
+    for arg in "$@"; do
+      case $arg in
+      validate)
+        setup "validate"
+        CONTINUE=0
+        ;;
+      plan)
+        setup "plan"
+        CONTINUE=0
+        ;;
+      apply)
+        assigner_check
+        setup "apply"
+        CONTINUE=0
+        ;;
+      --help | -h)
         usage
-    else
-        for arg in "$@"; do
-            case $arg in
-            validate)
-                setup "validate"
-                CONTINUE=0
-                ;;
-            plan)
-                setup "plan"
-                CONTINUE=0
-                ;;
-            apply)
-                assigner_check
-                setup "apply"
-                CONTINUE=0
-                ;;
-            --help | -h)
-                usage
-                CONTINUE=0
-                ;;
-            version)
-                show_version
-                CONTINUE=0
-                ;;
-            *)
-                echo -e "${WHITE}-------------------------------------${NC}"
-                echo -e "${RED}ERROR:{NC} WHOOPS! Terascript argument ${RED}'$CHOICE'${NC}"
-                echo -e "${RED}is not available yet!${NC}"
-                echo -e "${WHITE}-------------------------------------${NC}"
-                printf "\n\n"
-                usage
-                break
-                ;;
-            esac
-        done
-    fi
+        CONTINUE=0
+        ;;
+      version)
+        show_version
+        CONTINUE=0
+        ;;
+      *)
+        echo -e "${WHITE}-------------------------------------${NC}"
+        echo -e "${RED}ERROR:{NC} WHOOPS! Terascript argument ${RED}'$CHOICE'${NC}"
+        echo -e "${RED}is not available yet!${NC}"
+        echo -e "${WHITE}-------------------------------------${NC}"
+        printf "\n\n"
+        usage
+        break
+        ;;
+      esac
+    done
+  fi
 
-    exit $CONTINUE
+  exit $CONTINUE
 }
 
 main "$@"

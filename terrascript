@@ -195,9 +195,15 @@ setup() {
   # > Modified/Renamed
   # > Deleted
   echo -e "Terraform resources on ${BLUE}${repo}${NC}"
+  echo -e "Starting to scan repository ..."
+  printf "Scanning [${YELLOW}                         ${NC}] (0%%)\r"
   added_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }'); sleep 1
+  printf "Scanning [${YELLOW}######                  ${NC}] (33%%)\r"
   modified_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=MR -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }'); sleep 1
+  printf "Scanning [${YELLOW}############            ${NC}] (67%%)\r"
   deleted_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }'); sleep 1
+  printf "Scanning [${YELLOW}########################${NC}] (100%%)\r\n"
+  sleep 0.5
 
   if [ -n "${added_dirs}" ]; then
     echo -e "${WHITE}-------------------------------------${NC}"

@@ -1,5 +1,5 @@
 #!/bin/bash
-TERRASCRIPT_VERSION=v0.1.4
+TERRASCRIPT_VERSION="v0.1.4"
 
 set -euo pipefail
 
@@ -13,13 +13,13 @@ readonly WHITE='\033[1;97m'
 readonly NC='\033[0m'
 
 # Terraform variables
-TF_BACKEND=${TF_BACKEND:-aws}
-TF_PLANFILE=/tmp/target.tfplan
-TF_BIN=${TF_BIN:-/usr/local/bin/terraform}
-TF_INIT="$TF_BIN init"
-TF_VALIDATE="$TF_BIN validate"
-TF_PLAN="$TF_BIN plan -out $TF_PLANFILE"
-TF_APPLY="$TF_BIN apply $TF_PLANFILE"
+TF_BACKEND="${TF_BACKEND:-aws}"
+TF_PLANFILE="/tmp/target.tfplan"
+TF_BIN="${TF_BIN:-/usr/local/bin/terraform}"
+TF_INIT="${TF_BIN} init"
+TF_VALIDATE="${TF_BIN} validate"
+TF_PLAN="${TF_BIN} plan -out ${TF_PLANFILE}"
+TF_APPLY="${TF_BIN} apply ${TF_PLANFILE}"
 
 err () {
   echo -e "${RED}Error:${NC} $*" >&2
@@ -87,10 +87,10 @@ select_backend() {
 }
 
 assigner_check() {
-  assigner=$(echo "${TF_ASSIGNERS}" | base64 -d)
+  assigners=$(echo "${TF_ASSIGNERS:-}" | base64 -d)
 
-  if ! grep "${GITLAB_USER_LOGIN}" <<<"${assigner}"; then
-    err "You are not allowed to run this operation\nPlease contact one of the repository maintainers below:\n${WHITE}$assigner${NC}"
+  if ! grep "${GITLAB_USER_LOGIN:-}" <<<"${assigners}"; then
+    err "You are not allowed to run this operation\nPlease contact one of the repository maintainers below:\n${WHITE}${assigners}${NC}"
     exit 1
   fi
 
@@ -234,7 +234,7 @@ setup() {
 main() {
   local CONTINUE=1
 
-  if [[ ! -x ${TF_BIN} ]]; then
+  if [[ ! -x "${TF_BIN}" ]]; then
     err "missing terraform command"
   elif ! type git >/dev/null 2>&1; then
     err "missing git command"

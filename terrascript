@@ -3,14 +3,14 @@ TERRASCRIPT_VERSION=v0.1.4
 
 set -euo pipefail
 
-declare -xr RED='\033[1;31m'
-declare -xr YELLOW='\033[1;33m'
-declare -xr GREEN='\033[1;32m'
-declare -xr BLUE='\033[1;34m'
-declare -xr LGREEN='\033[1;92m'
-declare -xr LYELLOW='\033[1;93m'
-declare -xr WHITE='\033[1;97m'
-declare -xr NC='\033[0m'
+readonly RED='\033[1;31m'
+readonly YELLOW='\033[1;33m'
+readonly GREEN='\033[1;32m'
+readonly BLUE='\033[1;34m'
+readonly LGREEN='\033[1;92m'
+readonly LYELLOW='\033[1;93m'
+readonly WHITE='\033[1;97m'
+readonly NC='\033[0m'
 
 # Terraform variables
 TF_BACKEND=${TF_BACKEND:-aws}
@@ -90,13 +90,7 @@ assigner_check() {
   assigner=$(echo "${TF_ASSIGNERS}" | base64 -d)
 
   if ! grep "${GITLAB_USER_LOGIN}" <<<"${assigner}"; then
-    echo -e "${WHITE}-------------------------------------${NC}"
-    echo -e "${RED}ERROR:${NC} WHOOPS! You are not allowed to run this operation${NC}"
-    echo -e "${WHITE}-------------------------------------${NC}"
-    printf "\n\n"
-    echo -e "${WHITE}Please contact one of the repository maintainers below:${NC}"
-    echo -e "${WHITE}$assigner${NC}"
-    printf "\n\n"
+    err "You are not allowed to run this operation\nPlease contact one of the repository maintainers below:\n${WHITE}$assigner${NC}"
     exit 1
   fi
 
@@ -125,7 +119,7 @@ execute() {
     if [ -n "${dir_with_files}" ]; then
       echo -e "${BLUE}[START]${NC} ${WHITE}Starting Terraform task at${NC} ${LYELLOW}$tfpath\n${NC}"
 
-      bash -c "
+      /bin/bash -c "
         export TF_BACKEND_STATE=${tfpath%\/}/terraform.tfstate
         export TF_PLUGIN_CACHE_DIR=${cachedir}
 
@@ -160,17 +154,6 @@ execute() {
 
     fi
   done
-}
-
-sp="/-\|"
-sc=0
-
-spin() {
-   printf "\b%s" "${sp:sc++:1}"
-   ((sc==${#sp})) && sc=0
-}
-endspin() {
-   printf "\r%s\n" "$@"
 }
 
 setup() {
@@ -260,31 +243,31 @@ main() {
   else
     for arg in "$@"; do
       case $arg in
-      validate)
-        setup "validate"
-        CONTINUE=0
-        ;;
-      plan)
-        setup "plan"
-        CONTINUE=0
-        ;;
-      apply)
-        assigner_check
-        setup "apply"
-        CONTINUE=0
-        ;;
-      --help | -h)
-        usage
-        CONTINUE=0
-        ;;
-      version)
-        show_version
-        CONTINUE=0
-        ;;
-      *)
-        err "Unexpected argument for ${YELLOW}'$CHOICE'${NC}!"
-        break
-        ;;
+        validate)
+          setup "validate"
+          CONTINUE=0
+          ;;
+        plan)
+          setup "plan"
+          CONTINUE=0
+          ;;
+        apply)
+          assigner_check
+          setup "apply"
+          CONTINUE=0
+          ;;
+        --help | -h)
+          usage
+          CONTINUE=0
+          ;;
+        version)
+          show_version
+          CONTINUE=0
+          ;;
+        *)
+          err "Unexpected argument for ${YELLOW}'$CHOICE'${NC}!"
+          break
+          ;;
       esac
     done
   fi

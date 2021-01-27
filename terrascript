@@ -1,7 +1,10 @@
 #!/bin/bash
 TERRASCRIPT_VERSION="v0.1.4"
+TF_BIN="${TF_BIN:-/usr/local/bin/terraform}"
 
 set -euo pipefail
+
+ERRORS=()
 
 readonly RED='\033[1;31m'
 readonly YELLOW='\033[1;33m'
@@ -12,22 +15,34 @@ readonly LYELLOW='\033[1;93m'
 readonly WHITE='\033[1;97m'
 readonly NC='\033[0m'
 
-# Terraform variables
-TF_BACKEND="${TF_BACKEND:-aws}"
-TF_PLANFILE="/tmp/target.tfplan"
-TF_BIN="${TF_BIN:-/usr/local/bin/terraform}"
-TF_INIT="${TF_BIN} init"
-TF_VALIDATE="${TF_BIN} validate"
-TF_PLAN="${TF_BIN} plan -out ${TF_PLANFILE}"
-TF_APPLY="${TF_BIN} apply ${TF_PLANFILE}"
-
 err () {
-  echo -e "${RED}Error:${NC} $*" >&2
+  echo -e "[${RED}ERROR${NC}]: $*" >&2
 }
 
 show_version() {
   printf "Terrascript Version: %s\n" "${TERRASCRIPT_VERSION}"
   printf "Git Commit: %s\n" "${GIT_COMMIT:-dev}"
+}
+
+print_line() {
+  local length=$1
+  echo -ne "${BLUE}"
+  for _ in $(seq "${length}"); do echo -n "="; done
+  echo -ne "${NC}\n"
+}
+
+show_title_setup() {
+  local title="$1"
+  local repo="$2"
+
+  local length_title
+  length_title="$title ($repo)"
+
+  print_line "${#length_title}"
+  echo -e "${title} (${LYELLOW}${repo}${NC})"
+  print_line "${#length_title}"
+
+  echo ""
 }
 
 show_figlet() {
@@ -118,41 +133,39 @@ execute() {
   for tfpath in ${target_dirs}; do
     dir_with_files=$(find "${basedir}"/"${tfpath}" -maxdepth 1 -type f 2>/dev/null)
     if [ -n "${dir_with_files}" ]; then
-      echo -e "${BLUE}[START]${NC} ${WHITE}Starting Terraform task at${NC} ${LYELLOW}$tfpath\n${NC}"
+      echo -e "[${BLUE}START${NC}]: ${WHITE}Starting Terraform task at${NC} ${LYELLOW}${tfpath}${NC}"
 
-      /bin/bash -c "
+      (
         export TF_BACKEND_STATE=${tfpath%\/}/terraform.tfstate
         export TF_PLUGIN_CACHE_DIR=${cachedir}
+        export TF_PLANFILE="/tmp/target.tfplan"
 
-        cd ${basedir}/${tfpath}
+        TF_INIT="${TF_BIN} init"
+        TF_VALIDATE="${TF_BIN} validate"
+        TF_PLAN="${TF_BIN} plan -out ${TF_PLANFILE}"
+        TF_APPLY="${TF_BIN} apply ${TF_PLANFILE}"
+
+        cd "${basedir}"/"${tfpath}"
         sleep 1
 
         case ${action} in
           validate)
-            ${TF_INIT} -backend=false
-            ${TF_VALIDATE}
+            eval "${TF_INIT} -backend=false"
+            eval "${TF_VALIDATE}"
             ;;
           plan)
-            ${TF_INIT} ${TF_BACKEND_CONFIG}
-            sleep 1
-            ${TF_VALIDATE}
-            sleep 1
-            ${TF_PLAN} ${destroy}
+            eval "${TF_INIT} ${TF_BACKEND_CONFIG}"
+            eval "${TF_PLAN} ${destroy}"
             ;;
           apply)
-            ${TF_INIT} ${TF_BACKEND_CONFIG}
-            sleep 1
-            ${TF_VALIDATE}
-            sleep 1
-            ${TF_PLAN} ${destroy}
-            sleep 5
-            ${TF_APPLY}
+            eval "${TF_INIT} ${TF_BACKEND_CONFIG}"
+            eval "${TF_PLAN} ${destroy}"
+            eval "${TF_APPLY}"
             ;;
         esac
-      "
+      ) || ERRORS+=("${tfpath}")
 
-      echo -e "${BLUE}[DONE]${NC} ${WHITE}Terraform task at ${LYELLOW}$tfpath\n${NC} is completed\n${NC}"
-
+      echo -e "[${BLUE}DONE${NC}]: ${WHITE}Terraform task at ${LYELLOW}$tfpath\n${NC} is completed\n${NC}"
     fi
   done
 }
@@ -172,64 +185,61 @@ setup() {
   PREVIOUS_HEAD="${TF_PREVIOUS_HEAD:-$(git rev-parse HEAD^1)}"
 
   # Select backend and forming -backend-config arguments for terraform
-  select_backend "${TF_BACKEND}"
+  select_backend "${TF_BACKEND:-aws}"
 
   # Perform scanning into repository for any changes in one of the following states
   # > Adding
-  # > Modified/Renamed
+  # > Modified
   # > Deleted
-  echo -e "Terraform resources on ${BLUE}${repo}${NC}"
-  added_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }'); sleep 1
-  modified_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=MR -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }'); sleep 1
-  deleted_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }'); sleep 1
+
+  show_title_setup "STARTING TERRAFORM TASK" "${repo}"
+
+  added_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+  modified_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=M -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+  deleted_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
 
   if [ -n "${added_dirs}" ]; then
-    echo -e "${WHITE}-------------------------------------${NC}"
-    echo -e "${YELLOW}[ADDED]${NC} Terraform resources list:"
-    echo -e "${WHITE}-------------------------------------\n${NC}"
-
     execute "${added_dirs[@]}" "${action}"
   fi
 
   if [ -n "${modified_dirs}" ]; then
-    echo -e "${WHITE}-------------------------------------${NC}"
-    echo -e "${GREEN}[MODIFIED]${NC} Terraform resources list:"
-    echo -e "${WHITE}-------------------------------------\n${NC}"
-
     execute "${modified_dirs[@]}" "${action}"
   fi
 
   if [ -n "${deleted_dirs}" ]; then
-    echo -e "${WHITE}-------------------------------------${NC}"
-    echo -e "${RED}[DELETED]${NC} Terraform resources list:"
-    echo -e "${WHITE}-------------------------------------\n${NC}"
-
     git checkout "${PREVIOUS_HEAD}" >/dev/null 2>&1
-    execute "${deleted_dirs}" "${action}" destroy
+    execute "${deleted_dirs[@]}" "${action}" destroy
     git checkout "${CURRENT_HEAD}" >/dev/null 2>&1
   fi
 
-  echo -e "${RED}"
-  echo -e "############################################################"
-  echo -e "                 END OF TERRAFORM TASK                      "
-  echo -e "############################################################"
-  echo -e "${NC}"
+  show_title_setup "END OF TERRAFORM TASK" "${repo}"
 
-  echo -e "${GREEN}SUMMARY REPORT${NC}"
-  printf "\n${YELLOW}Added${NC} Resources: %s\n" "$([[ -z $added_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
-  for path in $added_dirs; do
-    echo -e "${YELLOW}\t$path${NC}"
-  done
+  if [ ${#ERRORS[@]} -eq 0 ]; then
+    summary_title="SUMMARY REPORT"
+    echo -e "${LGREEN}$(print_line "${#summary_title}")${NC}"
+    echo -e "${LGREEN}${summary_title}${NC}"
+    echo -e "${LGREEN}$(print_line "${#summary_title}")${NC}"
 
-  printf "\n${GREEN}Modified${NC} Resources: %s\n" "$([[ -z $modified_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
-  for path in $modified_dirs; do
-    echo -e "${GREEN}\t$path${NC}"
-  done
+    echo -e "${YELLOW}Added${NC} Resources:\t $(wc -w <<< "${added_dirs}") resources"
+    echo -e "${GREEN}Modified${NC} Resources:\t $(wc -w <<< "${modified_dirs}") resources"
+    echo -e "${RED}Deleted${NC} Resources:\t $(wc -w <<< "${deleted_dirs}") resources"
+    echo -e ""
 
-  printf "\n${RED}Deleted${NC} Resources: %s\n" "$([[ -z $deleted_dirs ]] && echo -e "${LGREEN}NONE${NC}")"
-  for path in $deleted_dirs; do
-    echo -e "${RED}\t$path${NC}"
-  done
+    for path in $added_dirs; do
+      echo -e "[${YELLOW}ADDED${NC}]: added resource ${YELLOW}${path}${NC}"
+    done
+
+    for path in $modified_dirs; do
+      echo -e "[${GREEN}MODIFIED${NC}]: modified resource ${GREEN}${path}${NC}"
+    done
+
+    for path in $deleted_dirs; do
+      echo -e "[${RED}DELETED${NC}]: deleted resource ${RED}${path}${NC}"
+    done
+  else
+    err "These resource failed terraform ${RED}${ERRORS[*]}${NC}"
+    exit 1
+  fi
 }
 
 main() {

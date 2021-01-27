@@ -1,5 +1,5 @@
 #!/bin/bash
-TERRASCRIPT_VERSION="v0.1.4"
+TERRASCRIPT_VERSION=v0.1.5
 TF_BIN="${TF_BIN:-/usr/local/bin/terraform}"
 
 set -euo pipefail
@@ -119,12 +119,13 @@ execute() {
   local action
   local destroy
 
-  basedir="${PWD}"
+  basedir="$(git rev-parse --show-toplevel)"
   cachedir=$(
     cachedir="${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}"
     mkdir -p "${cachedir}"
     echo "${cachedir}"
   )
+
   target_dirs=$1
   action=$2
 

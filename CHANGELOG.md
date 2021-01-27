@@ -1,3 +1,9 @@
+# 0.1.5 (Jan 27, 2021)
+NOTES:
+* Terraform v0.12.26
+* Reuse subshell
+* Modify message format
+
 # 0.1.4 (Oct 6, 2020)
 NOTES:
 * Terraform v0.12.25

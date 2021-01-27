@@ -1,4 +1,5 @@
 TERRAFORM_VERSION ?= "0.12.26"
+GIT_COMMIT ?= $(shell git rev-parse HEAD)
 VERSION ?= $(shell git describe --tags --dirty --always)
 
 .PHONY: test
@@ -28,7 +29,7 @@ docker/shellcheck:
 docker/build:
 	@docker build -t ardikabs/terrascript:$(VERSION) \
 		--build-arg TERRAFORM_VERSION=$(TERRAFORM_VERSION) \
-		--build-arg GIT_COMMIT=$(shell git rev-parse HEAD) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
 		-f build/Dockerfile .
 
 docker/push:

@@ -2,21 +2,34 @@ stages:
 - build
 
 variables:
-  APP_NAME: ardikabs/terrascript
-  APP_VERSION: ${CI_COMMIT_TAG}
-  TERRAFORM_VERSION: 0.12.25
+  TERRAFORM_VERSION: 0.12.26
 
-build:
+docker:build:
   stage: build
   image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [""]
+    name: docker:19.03.8
   script:
-    - mkdir -p /kaniko/.docker
-    - echo "$DOCKERCONFIG" | base64 -d > /kaniko/.docker/config.json
-    - executor
-      --context $CI_PROJECT_DIR
-      --dockerfile build/Dockerfile
-      --destination ${APP_NAME}:${APP_VERSION}
-      --build-arg=TERRAFORM_VERSION=${TERRAFORM_VERSION}
+    - mkdir -p /root/.docker
+    - echo "$DOCKERCONFIG" | base64 -d > /root/.docker/config.json
+    - VERSION=${CI_COMMIT_TAG} TERRAFORM_VERSION=${TERRAFORM_VERSION} GIT_COMMIT=${CI_COMMIT_SHA} make package
+  only:
+    refs:
+      - tags
+  when: manual
+  tags:
+    - docker
+    - package
+
+img:build:
+  stage: build
+  image:
+    name: r.j3ss.co/img
+  script:
+    - mkdir -p /root/.docker
+    - echo "$DOCKERCONFIG" | base64 -d > /root/.docker/config.json
+    - img build -t ardikabs/terrascript:${CI_COMMIT_TAG}
+      --build-arg TERRAFORM_VERSION=${TERRAFORM_VERSION}
+      --build-arg GIT_COMMIT=${CI_COMMIT_SHA}
+      -f build/Dockerfile .
+    - img push ardikabs/terrascript:${CI_COMMIT_TAG}
   when: manual

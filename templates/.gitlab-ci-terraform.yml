@@ -1,4 +1,4 @@
-image: ardikabs/terrascript:v0.1.0
+image: ardikabs/terrascript:v0.1.4
 
 stages:
   - validate
@@ -26,7 +26,6 @@ validate:on_commit:
     - terrascript validate
   except:
     refs:
-      - merge_requests
       - master
 
 plan:on_merge_request:

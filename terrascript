@@ -26,7 +26,8 @@ err () {
 }
 
 show_version() {
-  printf "Terraform Version: %s\n" "${TERRASCRIPT_VERSION}"
+  printf "Terrascript Version: %s\n" "${TERRASCRIPT_VERSION}"
+  printf "Git Commit: %s\n" "${GIT_COMMIT:-dev}"
 }
 
 show_figlet() {
@@ -265,7 +266,7 @@ main() {
           CONTINUE=0
           ;;
         *)
-          err "Unexpected argument for ${YELLOW}'$CHOICE'${NC}!"
+          err "Unexpected argument for ${YELLOW}'$arg'${NC}!"
           break
           ;;
       esac

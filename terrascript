@@ -40,27 +40,6 @@ show_version() {
   printf "Git Commit: %s\n" "${GIT_COMMIT:-dev}"
 }
 
-print_line() {
-  local length=$1
-  echo -ne "${BLUE}"
-  for _ in $(seq "${length}"); do echo -n "="; done
-  echo -ne "${NC}\n"
-}
-
-show_title_setup() {
-  local title="$1"
-  local repo="$2"
-
-  local length_title
-  length_title="$title ($repo)"
-
-  print_line "${#length_title}"
-  echo -e "${title} (${LYELLOW}${repo}${NC})"
-  print_line "${#length_title}"
-
-  echo ""
-}
-
 show_figlet() {
   cat <<EOF
  _______                                _       _
@@ -209,7 +188,11 @@ setup() {
   # > Modified
   # > Deleted
 
-  show_title_setup "STARTING TERRAFORM TASK" "${repo}"
+  echo -e "${RED}"
+  echo -e "############################################################"
+  echo -e "                 STARTING TERRAFORM TASK                    "
+  echo -e "############################################################"
+  echo -e "${NC}"
 
   added_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
   modified_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=M -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
@@ -229,29 +212,38 @@ setup() {
     git checkout "${CURRENT_HEAD}" >/dev/null 2>&1
   fi
 
-  show_title_setup "END OF TERRAFORM TASK" "${repo}"
+  echo -e "${RED}"
+  echo -e "############################################################"
+  echo -e "                 END OF TERRAFORM TASK                      "
+  echo -e "############################################################"
+  echo -e "${NC}"
 
   if [ ${#ERRORS[@]} -eq 0 ]; then
-    summary_title="SUMMARY REPORT"
-    echo -e "${LGREEN}$(print_line "${#summary_title}")${NC}"
-    echo -e "${LGREEN}${summary_title}${NC}"
-    echo -e "${LGREEN}$(print_line "${#summary_title}")${NC}"
+    echo -e "${LGREEN}"
+    echo -e "#####################################################"
+    echo -e "                 SUMMARY REPORT                      "
+    echo -e "#####################################################"
+    echo -e "${NC}"
 
-    echo -e "${YELLOW}Added${NC} Resources:\t $(wc -w <<< "${added_dirs}") resources"
-    echo -e "${GREEN}Modified${NC} Resources:\t $(wc -w <<< "${modified_dirs}") resources"
-    echo -e "${RED}Deleted${NC} Resources:\t $(wc -w <<< "${deleted_dirs}") resources"
+    echo -e "Repository: ${YELLOW}${repo}${NC}\n"
+
+    echo -e "${YELLOW}Added${NC} Resources \t: $(wc -w <<< "${added_dirs}" | sed -e 's/^[[:space:]]*//') resources"
+    echo -e "${GREEN}Modified${NC} Resources \t: $(wc -w <<< "${modified_dirs}" | sed -e 's/^[[:space:]]*//') resources"
+    echo -e "${RED}Deleted${NC} Resources \t: $(wc -w <<< "${deleted_dirs}" | sed -e 's/^[[:space:]]*//') resources"
     echo -e ""
 
+    echo -e "Terraform Resource List:\n"
+
     for path in $added_dirs; do
-      echo -e "[${YELLOW}ADDED${NC}]: added resource ${YELLOW}${path}${NC}"
+      printf "%-24b %b\n" "[${YELLOW}ADDED${NC}]" "Resource ${YELLOW}${path}${NC}"
     done
 
     for path in $modified_dirs; do
-      echo -e "[${GREEN}MODIFIED${NC}]: modified resource ${GREEN}${path}${NC}"
+      printf "%-24b %b\n" "[${GREEN}MODIFIED${NC}]" "Resource ${GREEN}${path}${NC}"
     done
 
     for path in $deleted_dirs; do
-      echo -e "[${RED}DELETED${NC}]: deleted resource ${RED}${path}${NC}"
+      printf "%-24b %b\n" "[${RED}DELETED${NC}" "Resource ${RED}${path}${NC}"
     done
   else
     err "These resource failed terrascript ${RED}${ERRORS[*]}${NC}"

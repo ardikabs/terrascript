@@ -1,23 +1,23 @@
 # 0.1.5 (Jan 27, 2021)
 NOTES:
-* Terraform v0.12.26
+* Terraform 0.12.26
 * Reuse subshell
 * Modify message format
 
 # 0.1.4 (Oct 6, 2020)
 NOTES:
-* Terraform v0.12.25
+* Terraform 0.12.25
 * Fix multiple directories scene
 * Add summary report
 
 # 0.1.3 (Sept 21, 2020)
 NOTES:
-* Terraform v0.12.25
+* Terraform 0.12.25
 * Fix error occur while `terraform apply` on destroy scene
 
 # 0.1.2 (Sept 16, 2020)
 NOTES:
-* Terraform v0.12.25
+* Terraform 0.12.25
 * Replace `git-diff` double-dot to triple-dot approach
 
 # v0.1.1 (Sept 14, 2020)

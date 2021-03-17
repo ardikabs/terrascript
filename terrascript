@@ -1,22 +1,108 @@
-#!/bin/bash
-TERRASCRIPT_VERSION=v0.1.5
-TF_BIN="${TF_BIN:-/usr/local/bin/terraform}"
-
+#!/usr/bin/env bash
 set -euo pipefail
 
+TERRASCRIPT_VERSION=v0.1.5
+TF_BIN="${TF_BIN:-/usr/local/bin/terraform}"
+TF_PLUGIN_CACHE_DIR="${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}"
+
 ERRORS=()
+ARGUMENT=none
+ERROR_MARK=none
 
-readonly RED='\033[1;31m'
-readonly YELLOW='\033[1;33m'
-readonly GREEN='\033[1;32m'
-readonly BLUE='\033[1;34m'
-readonly LGREEN='\033[1;92m'
-readonly LYELLOW='\033[1;93m'
-readonly WHITE='\033[1;97m'
-readonly NC='\033[0m'
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
-err () {
-  echo -e "[${RED}ERROR${NC}]: $*" >&2
+trap err_handler EXIT
+
+# Import terrascript library for required functions.
+# The terrascript library is installed to /opt/terrascript/lib in
+# production (see build/Dockerfile)
+# Disabling shellcheck following files as the full path would be required.
+# shellcheck disable=SC1090,SC2046
+if [ -d "/opt/terrascript/lib" ]; then
+  for lib in /opt/terrascript/lib/*.sh; do
+    source "${lib}"
+  done
+elif [ -f "${script_dir}/lib/util.sh" ]; then
+  for lib in "${script_dir}"/lib/*.sh; do
+    source "${lib}"
+  done
+fi
+
+# shellcheck disable=SC2034
+setup_colors() {
+  if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
+    NC='\033[0m'
+    WHITE='\033[1;97m'
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    LGREEN='\033[1;92m'
+    ORANGE='\033[0;33m'
+    BLUE='\033[0;34m'
+    PURPLE='\033[0;35m'
+    CYAN='\033[0;36m'
+    YELLOW='\033[1;33m'
+    LYELLOW='\033[1;93m'
+  else
+    NC=''
+    WHITE=''
+    RED=''
+    GREEN=''
+    LGREEN=''
+    ORANGE=''
+    BLUE=''
+    PURPLE=''
+    CYAN=''
+    YELLOW=''
+    LYELLOW=''
+  fi
+}
+
+msg() {
+  echo -e "$*" >&2
+}
+
+die() {
+  local msg=$1
+  local code=${2-1}
+  msg "error: $msg"
+  exit "$code"
+}
+
+err_handler() {
+  trap - EXIT
+  case $ERROR_MARK in
+    dependency)
+      for e in "${ERRORS[@]}"; do
+        msg "terrascript: missing ${RED}${e##*/}${NC} command"
+      done
+    ;;
+    runtime)
+      msg "terrascript: abort, caught resources failed on terraform execution:"
+      for e in "${ERRORS[@]}"; do
+        msg "${PURPLE}❯${NC} ${RED}${e}${NC}"
+      done
+    ;;
+  esac
+  exit 1
+}
+
+parse_params() {
+  if [[ $# -eq 0 ]]; then
+    usage
+  fi
+
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -h | --help) usage ;;
+      -v | --verbose) set -x ;;
+      -nc | --no-color) NO_COLOR=1 ;;
+      -?*) die "unknown option '$1'" ;;
+      *) break ;;
+    esac
+    shift
+  done
+
+  ARGUMENT=$1
 }
 
 command_check() {
@@ -28,12 +114,12 @@ command_check() {
   done
 
   if [ ${#ERRORS[@]} -ne 0 ]; then
-    for e in "${ERRORS[@]}"; do
-      err "missing ${RED}${e##*/}${NC} command"
-    done
-    exit 1
+    ERROR_MARK=dependency
+    return 99
   fi
 }
+
+########################################################
 
 show_version() {
   printf "Terrascript Version: %s\n" "${TERRASCRIPT_VERSION}"
@@ -65,232 +151,45 @@ and check the terraform task in one of following condition:
 * Modified/Renamed
 * Deleted
 
-USAGE:
+Usage:
+  $(basename "${BASH_SOURCE[0]}") [-h] [-v] [-nc] COMMAND
 
-  terrascript validate     : do terraform validate with a more power
-  terrascript plan         : do terraform plan with a more power
-  terrascript apply        : do terraform apply with a more power
-  terrascript version      : show terrascript version
+Available Commands:
+  validate     : do terraform validate with more power
+  plan         : do terraform plan with more power
+  apply        : do terraform apply with more power
+  version      : show terrascript version
 
-  terrascript -h,--help    : show this message
+Available Options:
+  -h,  --help        : Print this help and exit
+  -v,  --verbose     : Print script debug info
+  -nc, --no-color    : Disables colour output
 
-ENVIRONMENT VARIABLES:
-  \$TF_BIN                    : is a terraform binary path location, MUST be executable otherwise resulting non-zero status code. Default to "/usr/local/bin/terraform"
+Available Environment Variables:
+  \$TF_BIN                    : is a terraform binary path location, MUST be executable otherwise resulting non-zero status code. Default to "${TF_BIN}"
   \$TF_PREVIOUS_HEAD          : is a previous head commit to be compared with current branch head commit. Default to "HEAD^1"
   \$TF_BACKEND                : is a terraform backend provider. Default to "aws"
   \$TF_BACKEND_BUCKET         : is a terraform backend bucket
   \$TF_BACKEND_DYNAMODB_TABLE : is a terraform backend dynamodb table as terraform-lock storage
   \$TF_ASSIGNERS              : is a base64-encoded string that contains a list of assigners (separated by newline) that able to execute terrascript
-  \$TF_PLUGIN_CACHE_DIR       : is a terraform plugin cache dir based on official docs. Default to "/tmp/terraform/plugin-cache"
+  \$TF_PLUGIN_CACHE_DIR       : is a terraform plugin cache dir based on official docs. Default to "${TF_PLUGIN_CACHE_DIR}"
 EOF
-}
-
-select_backend() {
-
-  if [ "$1" == "aws" ]; then
-    export TF_BACKEND_CONFIG="-backend-config=\"bucket=\$TF_BACKEND_BUCKET\""
-    export TF_BACKEND_CONFIG+=" -backend-config=\"dynamodb_table=\$TF_BACKEND_DYNAMODB_TABLE\""
-    export TF_BACKEND_CONFIG+=" -backend-config=\"key=\$TF_BACKEND_STATE\""
-  elif [ "$1" == "gcs" ]; then
-    export TF_BACKEND_CONFIG="-backend-config=\"bucket=\$TF_BACKEND_BUCKET\""
-    export TF_BACKEND_CONFIG+=" -backend-config=\"prefix=\$TF_BACKEND_STATE\""
-  fi
-}
-
-assigner_check() {
-  assigners=$(echo "${TF_ASSIGNERS:-}" | base64 -d)
-
-  if ! grep "${GITLAB_USER_LOGIN:-}" <<<"${assigners}"; then
-    err "You are not allowed to run this operation\nPlease contact one of the repository maintainers below:\n${WHITE}${assigners}${NC}"
-    exit 1
-  fi
-
-}
-
-execute() {
-  local basedir
-  local cachedir
-  local target_dirs
-  local action
-  local destroy
-
-  basedir="$(git rev-parse --show-toplevel)"
-  cachedir=$(
-    cachedir="${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}"
-    mkdir -p "${cachedir}"
-    echo "${cachedir}"
-  )
-
-  target_dirs=$1
-  action=$2
-
-  if [ -n "${3:-}" ]; then destroy="-destroy"; fi
-
-  for tfpath in ${target_dirs}; do
-    dir_with_files=$(find "${basedir}"/"${tfpath}" -maxdepth 1 -type f 2>/dev/null)
-    if [ -n "${dir_with_files}" ]; then
-      echo -e "[${BLUE}START${NC}]: ${WHITE}Starting Terraform task at${NC} ${LYELLOW}${tfpath}${NC}"
-
-      (
-        export TF_BACKEND_STATE=${tfpath%\/}/terraform.tfstate
-        export TF_PLUGIN_CACHE_DIR=${cachedir}
-        export TF_PLANFILE="/tmp/target.tfplan"
-
-        TF_INIT="${TF_BIN} init"
-        TF_VALIDATE="${TF_BIN} validate"
-        TF_PLAN="${TF_BIN} plan -out ${TF_PLANFILE}"
-        TF_APPLY="${TF_BIN} apply ${TF_PLANFILE}"
-
-        cd "${basedir}"/"${tfpath}"
-        sleep 1
-
-        case ${action} in
-          validate)
-            eval "${TF_INIT} -backend=false"
-            eval "${TF_VALIDATE}"
-            ;;
-          plan)
-            eval "${TF_INIT} ${TF_BACKEND_CONFIG}"
-            eval "${TF_PLAN} ${destroy}"
-            ;;
-          apply)
-            eval "${TF_INIT} ${TF_BACKEND_CONFIG}"
-            eval "${TF_PLAN} ${destroy}"
-            eval "${TF_APPLY}"
-            ;;
-        esac
-      ) || ERRORS+=("${tfpath}")
-
-      echo -e "[${BLUE}DONE${NC}]: ${WHITE}Terraform task at ${LYELLOW}$tfpath\n${NC} is completed\n${NC}"
-    fi
-  done
-}
-
-setup() {
-  local repo
-  local action
-  local added_dirs
-  local modified_dirs
-  local deleted_dirs
-
-  action=$1
-  repo="$(basename "$(git rev-parse --show-toplevel)")"
-
-  # Git commit variables
-  CURRENT_HEAD="$(git rev-parse HEAD)"
-  PREVIOUS_HEAD="${TF_PREVIOUS_HEAD:-$(git rev-parse HEAD^1)}"
-
-  # Select backend and forming -backend-config arguments for terraform
-  select_backend "${TF_BACKEND:-aws}"
-
-  # Perform scanning into repository for any changes in one of the following states
-  # > Adding
-  # > Modified
-  # > Deleted
-
-  echo -e "${RED}"
-  echo -e "############################################################"
-  echo -e "                 STARTING TERRAFORM TASK                    "
-  echo -e "############################################################"
-  echo -e "${NC}"
-
-  added_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-  modified_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=M -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-  deleted_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-
-  if [ -n "${added_dirs}" ]; then
-    execute "${added_dirs[@]}" "${action}"
-  fi
-
-  if [ -n "${modified_dirs}" ]; then
-    execute "${modified_dirs[@]}" "${action}"
-  fi
-
-  if [ -n "${deleted_dirs}" ]; then
-    git checkout "${PREVIOUS_HEAD}" >/dev/null 2>&1
-    execute "${deleted_dirs[@]}" "${action}" destroy
-    git checkout "${CURRENT_HEAD}" >/dev/null 2>&1
-  fi
-
-  echo -e "${RED}"
-  echo -e "############################################################"
-  echo -e "                 END OF TERRAFORM TASK                      "
-  echo -e "############################################################"
-  echo -e "${NC}"
-
-  if [ ${#ERRORS[@]} -eq 0 ]; then
-    echo -e "${LGREEN}"
-    echo -e "#####################################################"
-    echo -e "                 SUMMARY REPORT                      "
-    echo -e "#####################################################"
-    echo -e "${NC}"
-
-    echo -e "Repository: ${YELLOW}${repo}${NC}\n"
-
-    echo -e "${YELLOW}Added${NC} Resources \t: $(wc -w <<< "${added_dirs}" | sed -e 's/^[[:space:]]*//') resources"
-    echo -e "${GREEN}Modified${NC} Resources \t: $(wc -w <<< "${modified_dirs}" | sed -e 's/^[[:space:]]*//') resources"
-    echo -e "${RED}Deleted${NC} Resources \t: $(wc -w <<< "${deleted_dirs}" | sed -e 's/^[[:space:]]*//') resources"
-    echo -e ""
-
-    echo -e "Terraform Resource List:\n"
-
-    for path in $added_dirs; do
-      printf "%-24b %b\n" "[${YELLOW}ADDED${NC}]" "Resource ${YELLOW}${path}${NC}"
-    done
-
-    for path in $modified_dirs; do
-      printf "%-24b %b\n" "[${GREEN}MODIFIED${NC}]" "Resource ${GREEN}${path}${NC}"
-    done
-
-    for path in $deleted_dirs; do
-      printf "%-24b %b\n" "[${RED}DELETED${NC}" "Resource ${RED}${path}${NC}"
-    done
-  else
-    err "These resource failed terrascript ${RED}${ERRORS[*]}${NC}"
-    exit 1
-  fi
+  exit
 }
 
 main() {
-  local CONTINUE=1
+  parse_params "$@"
+  setup_colors
 
   command_check "git" "${TF_BIN}"
 
-  if [[ $# -eq 0 ]]; then
-    usage
-  else
-    for arg in "$@"; do
-      case $arg in
-        validate)
-          setup "validate"
-          CONTINUE=0
-          ;;
-        plan)
-          setup "plan"
-          CONTINUE=0
-          ;;
-        apply)
-          assigner_check
-          setup "apply"
-          CONTINUE=0
-          ;;
-        --help | -h)
-          usage
-          CONTINUE=0
-          ;;
-        version)
-          show_version
-          CONTINUE=0
-          ;;
-        *)
-          err "Unexpected argument for ${YELLOW}'$arg'${NC}!"
-          break
-          ;;
-      esac
-    done
-  fi
-
-  exit $CONTINUE
+  case $ARGUMENT in
+    validate) run "validate" ;;
+    plan) run "plan" ;;
+    apply) run "apply" ;;
+    version) show_version ;;
+    *) msg "terrascript: ${YELLOW}'$ARGUMENT'${NC} is not terrascript command. See 'terrascript --help'"; return 99 ;;
+  esac
 }
 
 main "$@"

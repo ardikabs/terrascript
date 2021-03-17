@@ -1,38 +1,57 @@
 #!/usr/bin/env bash
 
+select_backend() {
+  if [ -z "${TF_BACKEND_BUCKET-}" ]; then
+    die "Required Terraform backend bucket (\$TF_BACKEND_BUCKET) environment variable is missing"
+  fi
+
+  # shellcheck disable=SC2016
+  if [ "$1" == "aws" ]; then
+    export TF_BACKEND_CONFIG="-backend-config=bucket=$TF_BACKEND_BUCKET \
+      -backend-config=key=\$TF_BACKEND_STATE \
+      ${TF_BACKEND_DYNAMODB_TABLE:+-backend-config=dynamodb_table=$TF_BACKEND_DYNAMODB_TABLE}
+    "
+  elif [ "$1" == "gcs" ]; then
+    export TF_BACKEND_CONFIG="-backend-config=bucket=$TF_BACKEND_BUCKET \
+      -backend-config=key=\$TF_BACKEND_STATE
+    "
+  fi
+}
+
 execute() {
   local basedir
-  local cachedir
   local target_dirs
   local action
   local destroy
 
-  basedir="$(git rev-parse --show-toplevel)"
-  cachedir=$(
-    cachedir="${TF_PLUGIN_CACHE_DIR}"
-    mkdir -p "${cachedir}"
-    echo "${cachedir}"
-  )
-
   target_dirs=$1
   action=$2
+  destroy=${3-}
 
-  if [ -n "${3-}" ]; then destroy="-destroy"; fi
+  export TF_PLUGIN_CACHE_DIR; mkdir -p "$TF_PLUGIN_CACHE_DIR"
+
+  basedir="$(git rev-parse --show-toplevel)"
+
+  # Select backend and forming -backend-config arguments for terraform
+  select_backend "${TF_BACKEND:-aws}"
+
 
   for tfpath in ${target_dirs}; do
     dir_with_files=$(find "${basedir}"/"${tfpath}" -maxdepth 1 -type f 2>/dev/null)
     if [ -n "${dir_with_files}" ]; then
-      echo -e "[${BLUE}START${NC}]: ${WHITE}Starting Terraform task at${NC} ${CYAN}${tfpath}${NC}"
+      msg "[${BLUE}START${NC}]: ${WHITE}Starting Terraform task at${NC} ${CYAN}${tfpath}${NC}"
+
+      TF_PLAN_DIR="${basedir}/.plan/${tfpath}"
+      mkdir -p "$TF_PLAN_DIR"
 
       (
-        export TF_BACKEND_STATE=${tfpath%\/}/terraform.tfstate
-        export TF_PLUGIN_CACHE_DIR=${cachedir}
-        export TF_PLANFILE="/tmp/target.tfplan"
+        export TF_PLAN_FILE="${TF_PLAN_DIR%\/}/default.tfplan"
+        export TF_BACKEND_STATE="${tfpath%\/}/terraform.tfstate"
 
         TF_INIT="${TF_BIN} init"
         TF_VALIDATE="${TF_BIN} validate"
-        TF_PLAN="${TF_BIN} plan -out ${TF_PLANFILE}"
-        TF_APPLY="${TF_BIN} apply ${TF_PLANFILE}"
+        TF_PLAN="${TF_BIN} plan -out ${TF_PLAN_FILE}"
+        TF_APPLY="${TF_BIN} apply ${TF_PLAN_FILE}"
 
         cd "${basedir}"/"${tfpath}"
         sleep 1
@@ -44,17 +63,16 @@ execute() {
             ;;
           plan)
             eval "${TF_INIT} ${TF_BACKEND_CONFIG}"
-            eval "${TF_PLAN} ${destroy}"
+            eval "${TF_PLAN} ${destroy:+-destroy}"
             ;;
           apply)
             eval "${TF_INIT} ${TF_BACKEND_CONFIG}"
-            eval "${TF_PLAN} ${destroy}"
             eval "${TF_APPLY}"
             ;;
         esac
       ) || ERRORS+=("${tfpath}")
 
-      echo -e "[${BLUE}DONE${NC}]: ${WHITE}Terraform task at ${CYAN}$tfpath\n${NC} is completed\n${NC}"
+      msg "[${BLUE}DONE${NC}]: ${WHITE}Terraform task at ${CYAN}$tfpath\n${NC} is completed\n${NC}"
     fi
   done
 }

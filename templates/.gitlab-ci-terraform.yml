@@ -1,4 +1,4 @@
-image: ardikabs/terrascript:v0.1.5
+image: ardikabs/terrascript:v0.1.6
 
 stages:
   - validate
@@ -19,30 +19,41 @@ before_script:
   - echo -n "$AWS_CONFIG" | base64 -d > ~/.aws/config
   - git fetch
 
-validate:on_commit:
+validate:
   stage: validate
   script:
     - export TF_PREVIOUS_HEAD=$(git rev-parse remotes/origin/master)
     - terrascript validate
   except:
     refs:
-      - master
+    - master
+    - merge_requests
 
-plan:on_merge_request:
+plan:
   stage: plan
   script:
     - export TF_PREVIOUS_HEAD=$(git rev-parse remotes/origin/master)
     - terrascript plan
   only:
     refs:
+    - merge_requests
+  artifacts:
+    paths:
+      - .plan/
+    expire_in: 1 hrs
+  only:
+    refs:
       - merge_requests
 
-apply:if_approved:
+apply:
   stage: apply
   script:
     - export TF_PREVIOUS_HEAD=$(git rev-parse remotes/origin/master)
     - terrascript apply
   only:
+    refs:
     - merge_requests
   when: manual
   allow_failure: false
+  dependencies:
+    - plan

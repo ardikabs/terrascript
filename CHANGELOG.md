@@ -1,3 +1,8 @@
+# 0.1.6 (March 17, 2021)
+NOTES:
+* Teraformless, download terraform binary on-demand from entrypoint. Need `$TERRAFORM_VERSION` to specify specific version.
+* Utilize trap as error handler
+
 # 0.1.5 (Jan 27, 2021)
 NOTES:
 * Terraform 0.12.26

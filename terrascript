@@ -11,7 +11,7 @@ ERROR_MARK=none
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
-trap err_handler EXIT
+trap exit_handler EXIT
 
 # Import terrascript library for required functions.
 # The terrascript library is installed to /opt/terrascript/lib in
@@ -30,7 +30,9 @@ fi
 
 # shellcheck disable=SC2034
 setup_colors() {
-  if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
+  # if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
+  # disable checking file descriptor (fd) since terrascript intended to be run on docker environment
+  if [[ -z "${NO_COLOR-}" ]]; then
     NC='\033[0m'
     WHITE='\033[1;97m'
     RED='\033[0;31m'
@@ -63,13 +65,15 @@ msg() {
 
 die() {
   local msg=$1
-  local code=${2-1}
+  local code=101
   msg "error: $msg"
-  exit "$code"
+  return "$code"
 }
 
-err_handler() {
+exit_handler() {
+  RC=$?
   trap - EXIT
+
   case $ERROR_MARK in
     dependency)
       for e in "${ERRORS[@]}"; do
@@ -83,7 +87,7 @@ err_handler() {
       done
     ;;
   esac
-  exit 1
+  exit $RC
 }
 
 parse_params() {
@@ -122,8 +126,8 @@ command_check() {
 ########################################################
 
 show_version() {
-  printf "Terrascript Version: %s\n" "${TERRASCRIPT_VERSION}"
-  printf "Git Commit: %s\n" "${GIT_COMMIT:-dev}"
+  printf "Terrascript Version: %s\n" "${TERRASCRIPT_VERSION}" >&2
+  printf "Git Commit: %s\n" "${GIT_COMMIT:-dev}" >&2
 }
 
 show_figlet() {
@@ -134,8 +138,8 @@ show_figlet() {
    | |/ _ \ '__| '__/ _\` / __|/ __| '__| | '_ \| __|
    | |  __/ |  | | | (_| \__ \ (__| |  | | |_) | |_
    |_|\___|_|  |_|  \__,_|___/\___|_|  |_| .__/ \__|
-                     | |
-                     |_|
+                                         | |
+                                         |_|
 EOF
 }
 
@@ -166,13 +170,13 @@ Available Options:
   -nc, --no-color    : Disables colour output
 
 Available Environment Variables:
-  \$TF_BIN                    : is a terraform binary path location, MUST be executable otherwise resulting non-zero status code. Default to "${TF_BIN}"
-  \$TF_PREVIOUS_HEAD          : is a previous head commit to be compared with current branch head commit. Default to "HEAD^1"
-  \$TF_BACKEND                : is a terraform backend provider. Default to "aws"
-  \$TF_BACKEND_BUCKET         : is a terraform backend bucket
-  \$TF_BACKEND_DYNAMODB_TABLE : is a terraform backend dynamodb table as terraform-lock storage
-  \$TF_ASSIGNERS              : is a base64-encoded string that contains a list of assigners (separated by newline) that able to execute terrascript
-  \$TF_PLUGIN_CACHE_DIR       : is a terraform plugin cache dir based on official docs. Default to "${TF_PLUGIN_CACHE_DIR}"
+  \$TF_BIN                    : is a terraform binary path location, MUST be executable otherwise resulting non-zero status code. Default to "${TF_BIN}".
+  \$TF_PREVIOUS_HEAD          : is a previous head commit to be compared with current branch head commit. Default to "HEAD^1", consider this as required.
+  \$TF_BACKEND                : is a terraform backend provider. Default to "aws".
+  \$TF_BACKEND_BUCKET         : is a terraform backend bucket. (required)
+  \$TF_BACKEND_DYNAMODB_TABLE : is a terraform backend dynamodb table as terraform-lock storage. (required)
+  \$TF_ASSIGNERS              : is a base64-encoded string that contains a list of assigners (separated by newline) that able to execute terrascript.
+  \$TF_PLUGIN_CACHE_DIR       : is a terraform plugin cache dir based on official docs. Default to "${TF_PLUGIN_CACHE_DIR}".
 EOF
   exit
 }

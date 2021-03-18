@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TERRASCRIPT_VERSION=v0.1.5
+TERRASCRIPT_VERSION=v0.1.6
 TF_BIN="${TF_BIN:-/usr/local/bin/terraform}"
 TF_PLUGIN_CACHE_DIR="${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}"
 

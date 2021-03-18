@@ -1,7 +1,12 @@
-# 0.1.6 (March 17, 2021)
+# 0.1.6 (March 18, 2021)
 NOTES:
 * Teraformless, download terraform binary on-demand from entrypoint. Need `$TERRAFORM_VERSION` to specify specific version.
-* Utilize trap as error handler
++ Add exit_handler.
++ Rework execute process.
++ Modify gitlabci template, make apply job depend on plan job.
++ Restructure directory to library based.
++ Add warning when environment variable TF_BACKEND_BUCKET is missing.
++ Add warning when running terrascript on non-git repository.
 
 # 0.1.5 (Jan 27, 2021)
 NOTES:

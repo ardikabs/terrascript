@@ -58,7 +58,7 @@ run() {
   msg "${NC}"
 
   if [ ${#ERRORS[@]} -ne 0 ]; then
-    ERROR_MARK=runtime
+    export ERROR_MARK=runtime
     return 10
   fi
 

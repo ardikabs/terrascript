@@ -118,7 +118,7 @@ command_check() {
   done
 
   if [ ${#ERRORS[@]} -ne 0 ]; then
-    ERROR_MARK=dependency
+    export ERROR_MARK=dependency
     return 99
   fi
 }

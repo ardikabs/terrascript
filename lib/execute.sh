@@ -35,7 +35,6 @@ execute() {
   # Select backend and forming -backend-config arguments for terraform
   select_backend "${TF_BACKEND:-aws}"
 
-
   for tfpath in ${target_dirs}; do
     dir_with_files=$(find "${basedir}"/"${tfpath}" -maxdepth 1 -type f 2>/dev/null)
     if [ -n "${dir_with_files}" ]; then

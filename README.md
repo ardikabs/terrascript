@@ -1,2 +1,2 @@
 # Terrascript
-A thin wrapper of terraform to work with multiple directory of terraform-task
+A thin wrapper script for Terraform to work with multiple directories of terraform-task.

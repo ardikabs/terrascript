@@ -1,10 +1,14 @@
 #!/bin/bash
 set -eo pipefail
 
-NEWEST_TAG=$(git describe --tags --abbrev=0)
-TERRASCRIPT_VERSION=$(grep "^TERRASCRIPT_VERSION=" "$(git rev-parse --show-toplevel)"/terrascript | awk -F= '{print $2}')
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
-if [ x"$NEWEST_TAG" != x"$TERRASCRIPT_VERSION" ]; then
-    git tag -a "$TERRASCRIPT_VERSION" -m "Terrascript version $TERRASCRIPT_VERSION"
-    git push --tags
+if [[ "$BRANCH" == "master" ]]; then
+    NEWEST_TAG=$(git describe --tags --abbrev=0)
+    TERRASCRIPT_VERSION=$(grep "^TERRASCRIPT_VERSION=" "$(git rev-parse --show-toplevel)"/terrascript | awk -F= '{print $2}')
+
+    if [ x"$NEWEST_TAG" != x"$TERRASCRIPT_VERSION" ]; then
+        git tag -a "$TERRASCRIPT_VERSION" -m "Terrascript version $TERRASCRIPT_VERSION"
+        git push origin "HEAD:$BRANCH" --follow-tags
+    fi
 fi

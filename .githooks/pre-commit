@@ -1,15 +1,10 @@
 #!/bin/bash
 set -eo pipefail
 
-if [[ "$(type shellcheck >/dev/null 2>&1; echo $?)" -eq 1 ]]; then
-    echo -e "\033[1;31mError\033[0m: missing shellcheck command"
+if ! type shellcheck >/dev/null 2>&1; then
+    echo -e "pre-commit-hook: missing \033[1;31mshellcheck\033[0m command"
     exit 1
 fi
 
-files=$(git diff --diff-filter=d --cached --name-only "$(git rev-parse --show-toplevel)"/terrascript)
-
-if [ -n "$files" ]
-then
-    shellcheck "$(git rev-parse --show-toplevel)/terrascript"
-    exit $?
-fi
+git ls-files --exclude='*.sh' --exclude="*.bash" --ignored | xargs shellcheck
+shellcheck "$(git rev-parse --show-toplevel)/terrascript"

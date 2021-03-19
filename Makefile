@@ -27,10 +27,9 @@ docker/shellcheck:
 		ardikabs/shellcheck ./test.sh
 
 docker/build:
-	@docker build -t ardikabs/terrascript:$(VERSION) \
-		--build-arg TERRAFORM_VERSION=$(TERRAFORM_VERSION) \
-		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
-		-f build/Dockerfile .
+	@TERRAFORM_VERSION=$(TERRAFORM_VERSION) \
+		GIT_COMMIT=$(GIT_COMMIT) \
+		VERSION=$(VERSION) ./build.sh
 
 docker/push:
 	@docker push ardikabs/terrascript:$(VERSION)

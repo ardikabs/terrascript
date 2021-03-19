@@ -59,7 +59,7 @@ run() {
 
   if [ ${#ERRORS[@]} -ne 0 ]; then
     export ERROR_MARK=runtime
-    return 10
+    return 26
   fi
 
   msg "${LGREEN}"

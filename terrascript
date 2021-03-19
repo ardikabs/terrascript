@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# exit code list:
+# 2  - unknown argument
+# 26 - terraform task failure
+# 64 - command line usage error
+# 69 - dependency unsatisfied
+# 77 - permission denied
+
 TERRASCRIPT_VERSION=v0.1.6
 TF_BIN="${TF_BIN:-/usr/local/bin/terraform}"
 TF_PLUGIN_CACHE_DIR="${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}"
@@ -65,9 +72,8 @@ msg() {
 
 die() {
   local msg=$1
-  local code=101
   msg "error: $msg"
-  return "$code"
+  return 64
 }
 
 exit_handler() {
@@ -119,7 +125,7 @@ command_check() {
 
   if [ ${#ERRORS[@]} -ne 0 ]; then
     export ERROR_MARK=dependency
-    return 99
+    return 69
   fi
 }
 
@@ -192,7 +198,7 @@ main() {
     plan) run "plan" ;;
     apply) run "apply" ;;
     version) show_version ;;
-    *) msg "terrascript: ${YELLOW}'$ARGUMENT'${NC} is not terrascript command. See 'terrascript --help'"; return 99 ;;
+    *) msg "terrascript: ${YELLOW}'$ARGUMENT'${NC} is not terrascript command. See 'terrascript --help'"; return 2;;
   esac
 }
 

@@ -7,6 +7,6 @@ assigner_check() {
     msg "${RED}ABORT!${NC} You are not allowed to run this operation."
     msg "Please contact one of the repository maintainers below:\n"
     msg "${WHITE}${assigners}${NC}"
-    return 99
+    return 77
   fi
 }

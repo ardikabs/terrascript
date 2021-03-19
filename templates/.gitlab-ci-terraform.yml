@@ -7,16 +7,29 @@ stages:
 
 variables:
   AWS_PROFILE: "set the AWS_PROFILE name here"
-  TF_BACKEND_BUCKET: "set the Terraform Backend S3 Bucket name here"
+  TF_BACKEND_BUCKET: "set the Terraform Backend S3/GCS Bucket name here"
   TF_BACKEND_DYNAMODB_TABLE: "set the Terraform Backend DynamoDB table name here"
 
+.scripts:
+  - &prepare |-
+    #-------------------------------------------------------------------------
+    # example for AWS, using AWS_PROFILE, set AWS_PROFILE in GitlabCI variables
+    # -------------------------------------------------------------------------
+    unset AWS_SECRET_ACCESS_KEY
+    unset AWS_ACCESS_KEY_ID
+    export AWS_METADATA_URL="http://override-ami-instance-profile"
+    mkdir -p ~/.aws
+    echo -n "$AWS_CREDENTIALS" | base64 -d > ~/.aws/credentials
+    echo -n "$AWS_CONFIG" | base64 -d > ~/.aws/config
+
+    #-------------------------------------------------------------------------
+    # example for Google, using GOOGLE_APPLICATION_CREDENTIALS, set GOOGLE_APPLICATION_CREDENTIALS in GitlabCI variables
+    #-------------------------------------------------------------------------
+    echo -n "$TF_SERVICE_ACCOUNT" | base64 -d > /tmp/sa.json
+
 before_script:
-  - unset AWS_SECRET_ACCESS_KEY
-  - unset AWS_ACCESS_KEY_ID
+  - *prepare
   - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf ssh://git@gitlab.com/
-  - mkdir -p ~/.aws
-  - echo -n "$AWS_CREDENTIALS" | base64 -d > ~/.aws/credentials
-  - echo -n "$AWS_CONFIG" | base64 -d > ~/.aws/config
   - git fetch
 
 validate:

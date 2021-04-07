@@ -180,7 +180,8 @@ Available Environment Variables:
   \$TF_PREVIOUS_HEAD          : is a previous head commit to be compared with current branch head commit. Default to "HEAD^1", consider this as required.
   \$TF_BACKEND                : is a terraform backend provider. Default to "aws".
   \$TF_BACKEND_BUCKET         : is a terraform backend bucket. (required)
-  \$TF_BACKEND_DYNAMODB_TABLE : is a terraform backend dynamodb table as terraform-lock storage. (required)
+  \$TF_BACKEND_PREFIX         : is a terraform backend prefix for the terraform state.
+  \$TF_BACKEND_DYNAMODB_TABLE : is a terraform backend dynamodb table as terraform-lock storage.
   \$TF_ASSIGNERS              : is a base64-encoded string that contains a list of assigners (separated by newline) that able to execute terrascript.
   \$TF_PLUGIN_CACHE_DIR       : is a terraform plugin cache dir based on official docs. Default to "${TF_PLUGIN_CACHE_DIR}".
 EOF

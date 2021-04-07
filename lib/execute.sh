@@ -48,7 +48,7 @@ execute() {
 
       (
         export TF_PLAN_FILE="${TF_PLAN_DIR%\/}/default.tfplan"
-        export TF_BACKEND_STATE="${tfpath%\/}/terraform.tfstate"
+        export TF_BACKEND_STATE="${tfpath%\/}/.terraform"
 
         TF_INIT="${TF_BIN} init"
         TF_VALIDATE="${TF_BIN} validate"

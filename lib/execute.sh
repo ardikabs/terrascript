@@ -6,16 +6,19 @@ select_backend() {
   fi
 
   # shellcheck disable=SC2016
-  if [ "$1" == "aws" ]; then
-    export TF_BACKEND_CONFIG="-backend-config=bucket=$TF_BACKEND_BUCKET \
-      -backend-config=key=\$TF_BACKEND_STATE \
-      ${TF_BACKEND_DYNAMODB_TABLE:+-backend-config=dynamodb_table=$TF_BACKEND_DYNAMODB_TABLE}
-    "
-  elif [ "$1" == "gcs" ]; then
-    export TF_BACKEND_CONFIG="-backend-config=bucket=$TF_BACKEND_BUCKET \
-      -backend-config=key=\$TF_BACKEND_STATE
-    "
-  fi
+  case $1 in
+    aws)
+      export TF_BACKEND_CONFIG="-backend-config=bucket=$TF_BACKEND_BUCKET \
+        -backend-config=key=\$TF_BACKEND_STATE \
+        ${TF_BACKEND_DYNAMODB_TABLE:+-backend-config=dynamodb_table=$TF_BACKEND_DYNAMODB_TABLE}
+      "
+      ;;
+    google)
+      export TF_BACKEND_CONFIG="-backend-config=bucket=$TF_BACKEND_BUCKET \
+        -backend-config=prefix=\$TF_BACKEND_STATE
+      "
+      ;;
+  esac
 }
 
 execute() {

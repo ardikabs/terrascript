@@ -46,6 +46,8 @@ execute() {
       TF_PLAN_DIR="${basedir}/.plan/${tfpath}"
       mkdir -p "$TF_PLAN_DIR"
 
+      # terrascript will keep running even there is error in one of terraform task
+      # but resulting non-zero exit code for the whole script
       (
         export TF_PLAN_FILE="${TF_PLAN_DIR%\/}/default.tfplan"
         export TF_BACKEND_STATE="${tfpath%\/}/.terraform"

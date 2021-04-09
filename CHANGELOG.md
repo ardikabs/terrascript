@@ -7,6 +7,7 @@ NOTES:
 + Restructure directory to library based.
 + Add warning when environment variable TF_BACKEND_BUCKET is missing.
 + Add warning when running terrascript on non-git repository.
++ Add TF_BACKEND_PREFIX for prefix on the bucket path.
 
 # 0.1.5 (Jan 27, 2021)
 NOTES:

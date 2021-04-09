@@ -12,9 +12,12 @@ run() {
   local deleted_dirs
 
   action=$1
-  if [[ $action == "apply" ]]; then
-    assigner_check
-  fi
+
+  case $action in
+    validate | plan) ;;
+    apply) assigner_check;;
+    *) msg "terrascript: unknown terraform operation ${action}"; return 2;;
+  esac
 
   repo="$(basename "$(git rev-parse --show-toplevel)")"
 
@@ -33,18 +36,23 @@ run() {
   msg "############################################################"
   msg "${NC}"
 
-  added_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-  modified_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=M -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
-  deleted_dirs=$(git --no-pager diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+  added_dirs=$(git diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=A -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+  modified_dirs=$(git diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=M -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
+  deleted_dirs=$(git diff "${PREVIOUS_HEAD}"..."${CURRENT_HEAD}" --dirstat-by-file --diff-filter=D -- '*.tf' '*.tfvars' '*.json' | awk '{ print $2 }')
 
+  # execute: Terraform execution to all recent added directories
   if [ -n "${added_dirs}" ]; then
     execute "${added_dirs[@]}" "${action}"
   fi
 
+  # execute: Terraform execution to all recent modified directories
   if [ -n "${modified_dirs}" ]; then
     execute "${modified_dirs[@]}" "${action}"
   fi
 
+  # execute: Terraform execution to all recent deleted directories
+  # checkout to previous commit on head, run destroy operation
+  # then back to commit on current head
   if [ -n "${deleted_dirs}" ]; then
     git checkout "${PREVIOUS_HEAD}" >/dev/null 2>&1
     execute "${deleted_dirs[@]}" "${action}" "destroy"

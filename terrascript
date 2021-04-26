@@ -176,6 +176,7 @@ Available Options:
   -nc, --no-color    : Disables colour output
 
 Available Environment Variables:
+  \$TERRAFORM_VERSION         : is a terraform version to be used, default to Terraform version 0.12.26 (terraformless-build)
   \$TF_BIN                    : is a terraform binary path location, MUST be executable otherwise resulting non-zero status code. Default to "${TF_BIN}".
   \$TF_PREVIOUS_HEAD          : is a previous head commit to be compared with current branch head commit. Default to "HEAD^1", consider this as required.
   \$TF_BACKEND                : is a terraform backend provider. Default to "aws".
@@ -192,7 +193,8 @@ main() {
   parse_params "$@"
   setup_colors
 
-  command_check "git" "${TF_BIN}"
+  command_check "git"
+  fetch_terraform_if_not_exist
 
   case $ARGUMENT in
     validate) run "validate" ;;

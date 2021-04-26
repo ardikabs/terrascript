@@ -8,7 +8,7 @@ set -euo pipefail
 # 69 - dependency unsatisfied
 # 77 - permission denied
 
-TERRASCRIPT_VERSION=v0.1.6
+TERRASCRIPT_VERSION=v0.1.7
 TF_BIN="${TF_BIN:-/usr/local/bin/terraform}"
 TF_PLUGIN_CACHE_DIR="${TF_PLUGIN_CACHE_DIR:-/tmp/terraform/plugin-cache}"
 

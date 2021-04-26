@@ -1,6 +1,10 @@
+# 0.1.7 (April 26, 2021)
+NOTES:
+* Add support for terrascript itself to be able download Terraform binary if not exist
+
 # 0.1.6 (March 18, 2021)
 NOTES:
-* Teraformless, download terraform binary on-demand from entrypoint. Need `$TERRAFORM_VERSION` to specify specific version.
+* Terraformless, download terraform binary on-demand from entrypoint. Need `$TERRAFORM_VERSION` to specify specific version.
 + Add exit_handler.
 + Rework execute process.
 + Modify gitlabci template, make apply job depend on plan job.

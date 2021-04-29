@@ -19,6 +19,7 @@ RUN apt update -y && \
         git \
         curl \
         gawk \
+        jq \
         openssh-client && \
     rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man && \
     apt-get clean && \

@@ -1,4 +1,4 @@
-image: ardikabs/terrascript:v0.1.6
+image: ardikabs/terrascript:v0.1.8
 
 stages:
   - validate
@@ -7,8 +7,9 @@ stages:
 
 variables:
   AWS_PROFILE: "set the AWS_PROFILE name here"
+  TF_BACKEND: "currently the available values are 'aws' and 'google'"
   TF_BACKEND_BUCKET: "set the Terraform Backend S3/GCS Bucket name here"
-  TF_BACKEND_DYNAMODB_TABLE: "set the Terraform Backend DynamoDB table name here"
+  TF_BACKEND_DYNAMODB_TABLE: "set the Terraform Backend DynamoDB table name here, if you use S3 as the backend"
 
 .scripts:
   - &prepare |-
@@ -54,9 +55,6 @@ plan:
     paths:
       - .plan/
     expire_in: 1 hrs
-  only:
-    refs:
-      - merge_requests
 
 apply:
   stage: apply

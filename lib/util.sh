@@ -2,7 +2,7 @@
 
 fetch_terraform_if_not_exist() {
   if ! type terraform >/dev/null 2>&1; then
-    wget -O /tmp/terraform.zip https://releases.hashicorp.com/terraform/"${TERRAFORM_VERSION}"/terraform_"${TERRAFORM_VERSION}"_linux_amd64.zip
+    wget -q -O /tmp/terraform.zip https://releases.hashicorp.com/terraform/"${TERRAFORM_VERSION}"/terraform_"${TERRAFORM_VERSION}"_linux_amd64.zip
     unzip -qq -o /tmp/terraform.zip -d /tmp/; rm -rf /tmp/terraform.zip
     mv "/tmp/terraform" "/tmp/terraform_${TERRAFORM_VERSION}"
 

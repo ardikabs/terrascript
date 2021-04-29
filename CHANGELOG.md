@@ -1,3 +1,8 @@
+# 0.1.8 (April 29, 2021)
+NOTES:
+* Silent output while download terraform binary
+* Inform terraform version while triggered
+
 # 0.1.7 (April 26, 2021)
 NOTES:
 * Add support for terrascript itself to be able download Terraform binary if not exist

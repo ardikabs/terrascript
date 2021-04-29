@@ -196,6 +196,8 @@ main() {
   command_check "git"
   fetch_terraform_if_not_exist
 
+  msg "Terraform version ${YELLOW}${TERRAFORM_VERSION}${NC}"
+
   case $ARGUMENT in
     validate) run "validate" ;;
     plan) run "plan" ;;
